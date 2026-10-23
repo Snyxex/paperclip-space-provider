@@ -1,0 +1,1 @@
+# paperclip-space-provider
