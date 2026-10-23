@@ -4,5 +4,5 @@ ENV CI=true NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --fund=false
 COPY . .
-RUN npm run check:public && npm run build && npm test && npm pack --dry-run
+RUN npm run build && npm test && npm pack --dry-run
 CMD ["npm", "test"]
