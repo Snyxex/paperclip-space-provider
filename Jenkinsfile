@@ -25,17 +25,31 @@ pipeline {
         node -e 'const p=require("./package.json"); if(p.name!=="@snyxex/paperclip-space-provider") throw new Error("Unexpected npm scope")'
       ''' }
     }
+    stage('Install locked dependencies') {
+      steps { sh '''
+        set -eu
+        test -f package-lock.json
+        npm ci --ignore-scripts --no-audit --fund=false
+      ''' }
+    }
     stage('Build') { steps { sh 'npm run build' } }
     stage('Protocol tests') { steps { sh 'npm test' } }
-    stage('Dependency lock and audit') {
-      steps { script {
-        if (fileExists('package-lock.json')) {
-          sh 'npm ci --ignore-scripts --no-audit --fund=false'
-          sh 'npm audit --omit=dev --audit-level=high'
-        } else {
-          unstable('package-lock.json not committed: full dependency audit incomplete; npm release blocked')
-        }
-      } }
+    stage('Plugin SDK smoke test') {
+      steps { sh '''
+        set -eu
+        node --input-type=module - <<'NODE'
+const [{default: plugin}, {default: manifest}] = await Promise.all([
+  import('./dist/plugin.js'),
+  import('./dist/manifest.js')
+]);
+if (typeof plugin !== 'object' || plugin === null) throw new Error('Plugin export missing');
+if (typeof manifest !== 'object' || manifest === null) throw new Error('Manifest export missing');
+if (!Array.isArray(manifest.environmentDrivers)) throw new Error('Environment drivers missing');
+NODE
+      ''' }
+    }
+    stage('Dependency audit') {
+      steps { sh 'npm audit --omit=dev --audit-level=high' }
     }
     stage('Package inspection') {
       steps { sh '''
