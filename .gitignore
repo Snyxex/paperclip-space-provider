@@ -9,3 +9,12 @@ coverage/
 .npmrc
 npm-pack-report.json
 .DS_Store
+
+# Local-only deployment settings and credentials
+config.local.json
+*.local.json
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx

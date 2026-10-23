@@ -50,9 +50,16 @@ Install an approved version through Paperclip's **Settings → Plugins**, then s
 
 Use HTTPS for network-separated deployments. Do not expose SPACE Kind development credentials or ports publicly, and do not put the management bearer token inside a sandbox.
 
+## Public and self-hosted setup
+
+This is a community-maintained source project: no hosted instance, maintainer account, private registry, or personal domain is required. Each operator supplies their own SPACE management and stream origins and stores the API token as a Paperclip secret. See [generic example configuration](examples/config.example.json). The example domains are intentionally non-resolvable; replace them with your own HTTPS endpoints. Never commit real token values.
+
+The repository includes a credential-free public-source hygiene check (`npm run check:public`). It flags common committed token formats, private-key headers, URL credentials and non-example email addresses. It is a defense-in-depth check, **not** a guarantee that the current repository or its Git history contains no sensitive information. Review the full Git history and rotate any credentials exposed in past commits before public redistribution. Git commit authorship and repository ownership are GitHub metadata and cannot be anonymized by editing source files.
+
 ## Development
 
 ```bash
+npm run check:public
 npm run build
 npm test
 npm pack --dry-run

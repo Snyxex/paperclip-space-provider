@@ -35,6 +35,7 @@
     "build": "node scripts/build.mjs",
     "test": "node --test",
     "typecheck": "node scripts/build.mjs --verify-only",
-    "pack:check": "npm pack --dry-run"
+    "pack:check": "npm pack --dry-run",
+    "check:public": "node scripts/check-public.mjs"
   }
 }
