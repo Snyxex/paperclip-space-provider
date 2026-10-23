@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import path from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {identifier, parseConfig, shellQuote, WORKSPACE} from './config.js';
 import {readCommandEvents} from './sse.js';
@@ -32,6 +33,53 @@ export class SpaceClient {
     try {return bodyObject(await response.json());} catch {throw new SpaceError('SPACE returned invalid JSON');}
   }
   api(path, options) {return this.request(this.config.apiUrl, path, options);}
+  async readFile(id, guestPath, offset, length) {
+    id = identifier(id, 'sbx_');
+    if (typeof guestPath !== 'string' || !guestPath.startsWith('/paperclip-workspace/') ||
+        guestPath.includes('\0') || guestPath.includes('\\') ||
+        guestPath.split('/').includes('..') || path.posix.normalize(guestPath) !== guestPath ||
+        !Number.isSafeInteger(offset) || offset < 0 ||
+        !Number.isInteger(length) || length < 1 || length > 512*1024) {
+      throw new SpaceError('Invalid SPACE native file read');
+    }
+    let response;
+    try {
+      response = await this.fetchImpl(this.config.apiUrl + '/v1/sandboxes/' + id + '/files:read', {
+        method: 'POST', redirect: 'error', signal: AbortSignal.timeout(this.config.timeoutMs),
+        headers: {
+          'Accept':'application/octet-stream',
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+this.config.token,
+        },
+        body:JSON.stringify({path:guestPath, offset, length}),
+      });
+    } catch { throw new SpaceError('SPACE native file read failed or timed out'); }
+    if (!response.ok) {
+      await response.body?.cancel().catch(()=>{});
+      throw new SpaceError('SPACE native file read HTTP '+response.status,response.status);
+    }
+    if (!response.headers.get('content-type')?.startsWith('application/octet-stream') ||
+        !response.body) throw new SpaceError('SPACE native file read returned an invalid response type');
+    const reader = response.body.getReader();
+    const chunks = [];
+    let count = 0;
+    try {
+      for (;;) {
+        const {value,done} = await reader.read();
+        if (done) break;
+        if (!(value instanceof Uint8Array)) throw new SpaceError('SPACE native file read produced invalid bytes');
+        count += value.byteLength;
+        if (count > length) throw new SpaceError('SPACE native file read exceeded request limit');
+        chunks.push(Buffer.from(value));
+      }
+    } catch {
+      await reader.cancel().catch(()=>{});
+      throw new SpaceError('SPACE native file read stream was incomplete or oversized');
+    } finally { reader.releaseLock(); }
+    if (count !== length) throw new SpaceError('SPACE native file read length mismatch');
+    return Buffer.concat(chunks,count);
+  }
+
   async wait(path, state, timeoutMs = this.config.timeoutMs) {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
