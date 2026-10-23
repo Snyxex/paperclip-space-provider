@@ -21,7 +21,9 @@ Open-source integration for running [Paperclip AI](https://github.com/paperclipa
 
 The normal `Jenkinsfile` runs **without credentials**. It intentionally requires `package.json` and a committed `package-lock.json`; before the provider source is added, CI is not ready to pass.
 
-A separate, trusted Jenkins release job can invoke `ci/stage-npm.sh` for a protected and reviewed Git tag. It must use an npm **stage-only** token and an isolated executor. Jenkins stages the package; a human reviews and approves the staged version with npm 2FA. **Never give npm credentials to pull-request jobs.**
+A separate, trusted Jenkins release job can invoke `ci/stage-npm.sh` only for an approved tag pointing to the **current `main` commit**. No releases are created from PRs, feature branches, or detached historical commits. It must use an npm **stage-only** token and an isolated executor. Jenkins stages the package; a human reviews and approves the staged version with npm 2FA. **Never give npm credentials to pull-request jobs.**
+
+All personal GitHub projects under `Snyxex` publish under the personal npm scope **`@snyxex`**, starting with `@snyxex/paperclip-space-provider`. A move into an organization is a separate, explicit migration.
 
 Read [Release & Jenkins setup](docs/RELEASING.md) before configuring the release job.
 

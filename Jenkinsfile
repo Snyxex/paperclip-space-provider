@@ -28,6 +28,7 @@ pipeline {
           node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major < 24 || (major === 24 && minor < 11)) process.exit(1)'
           test -f package.json
           test -f package-lock.json
+          node -e 'const p=require("./package.json"); if(p.name!=="@snyxex/paperclip-space-provider") throw new Error("Unexpected npm scope")'
         '''
       }
     }
@@ -35,6 +36,12 @@ pipeline {
     stage('Dependencies') {
       steps {
         sh 'npm ci --ignore-scripts --no-audit --fund=false'
+      }
+    }
+
+    stage('Build') {
+      steps {
+        sh 'npm run build'
       }
     }
 
