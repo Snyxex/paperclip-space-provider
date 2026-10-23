@@ -7,9 +7,9 @@ SPACE control plane, or prove compatibility with a Paperclip host.
 ## Trusted environments
 
 1. **PR builds:** credential-free Node tests, static checks, and package inspection.
-2. **Main branch:** the same checks plus a dedicated disposable Docker build agent.
-   Docker daemon/socket access is root-equivalent. Never run arbitrary PR code on
-   a persistent Jenkins agent with Docker socket access or production mounts.
+2. **Main branch:** the same checks plus a dedicated disposable rootless Podman build agent.
+   No Docker socket is needed. Rootless Podman reduces privileges but untrusted
+   code still requires an isolated disposable host without secrets or production mounts.
 3. **Manual integration:** separate disposable host with hardware virtualization
    (KVM), pinned SPACE build, and isolated Paperclip instance. Bind a scoped SPACE
    token only to the trusted job, never to Docker build layers or PR jobs.
@@ -34,12 +34,12 @@ Known blockers: stdin, full process cancellation, reliable lease expiry,
 end-to-end production workspace sync and host integration are incomplete.
 Do not turn on production credentials or publish a stable release until closed.
 
-## Local Docker verification
+## Local rootless Podman verification
 
 ```sh
 bash ci/docker-test.sh
 ```
 
-This requires a working Docker daemon. The build downloads npm dependencies,
+This requires a working rootless Podman installation. The build downloads npm dependencies,
 runs tests during image creation and reruns tests in a network-disabled,
 read-only container. It does not require a SPACE token or server.
