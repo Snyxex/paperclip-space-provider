@@ -1,0 +1,10 @@
+{
+  "apiUrl": "https://space-api.example.invalid",
+  "dataPlaneUrl": "https://space-stream.example.invalid",
+  "apiToken": "<configure-as-paperclip-secret>",
+  "template": "seed:latest",
+  "timeoutMs": 300000,
+  "allowInsecurePrivateHttp": false,
+  "reuseLease": false,
+  "transferMode": "disabled"
+}
