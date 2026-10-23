@@ -1,10 +1,10 @@
 const manifest = {
-  id: 'snyxex.space-sandbox-provider',
+  id: 'community.space-sandbox-provider',
   apiVersion: 1,
   version: '0.1.0-alpha.1',
   displayName: 'SPACE Firecracker Sandbox (Alpha)',
   description: 'Experimental self-hosted SPACE execution environment for Paperclip.',
-  author: 'Snyxex',
+  author: 'Community contributors',
   categories: ['automation'],
   capabilities: ['environment.drivers.register'],
   entrypoints: {worker: './dist/worker.js'},
