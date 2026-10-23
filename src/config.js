@@ -33,6 +33,10 @@ export function parseConfig(raw) {
   }
   const timeoutMs = Number(raw.timeoutMs ?? 300_000);
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 3_600_000) throw new Error('timeoutMs must be 1000..3600000');
+  const transferMode = raw.transferMode ?? 'disabled';
+  if (!['disabled', 'command-experimental'].includes(transferMode)) {
+    throw new Error('Invalid transferMode; use disabled or command-experimental');
+  }
   const resources = {};
   for (const [key, lower, upper] of [['vcpu',1,4], ['memory_mib',256,8192], ['disk_mib',512,20480]]) {
     if (raw[key] !== undefined && raw[key] !== null) {
@@ -42,7 +46,7 @@ export function parseConfig(raw) {
     }
   }
   if (raw.reuseLease === true) throw new Error('reuseLease is not yet supported in v0.1-alpha');
-  return {apiUrl, dataPlaneUrl, token, template, timeoutMs, resources, allowInsecurePrivateHttp};
+  return {apiUrl, dataPlaneUrl, token, template, timeoutMs, resources, allowInsecurePrivateHttp, transferMode};
 }
 
 export function identifier(value, prefix) {

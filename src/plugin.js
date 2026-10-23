@@ -1,6 +1,7 @@
 import {definePlugin} from '@paperclipai/plugin-sdk';
 import {parseConfig, WORKSPACE} from './config.js';
 import {SpaceClient} from './space-client.js';
+import {syncFiles} from './workspace-sync.js';
 
 let context = null;
 const client = (params) => new SpaceClient(params.config);
@@ -69,6 +70,14 @@ const plugin = definePlugin({
     const id = checkLease(params);
     await client(params).ensureWorkspace(id);
     return {cwd:WORKSPACE, metadata:{provider:'space', remoteCwd:WORKSPACE}};
+  },
+  async onEnvironmentSyncIn(params) {
+    checkLease(params);
+    return syncFiles(client(params), params, 'in');
+  },
+  async onEnvironmentSyncOut(params) {
+    checkLease(params);
+    return syncFiles(client(params), params, 'out');
   },
   async onEnvironmentExecute(params) {
     const id = checkLease(params);

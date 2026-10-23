@@ -22,7 +22,8 @@ const manifest = {
       vcpu: {type:'integer', minimum:1, maximum:4},
       memory_mib: {type:'integer', minimum:256, maximum:8192},
       disk_mib: {type:'integer', minimum:512, maximum:20480},
-      reuseLease: {type:'boolean', default:false, description:'Not yet supported in this alpha.'}
+      reuseLease: {type:'boolean', default:false, description:'Not yet supported in this alpha.'},
+      transferMode: {type:'string', enum:['disabled','command-experimental'], default:'disabled', description:'WARNING: experimental file-only sync includes base64 file bytes in SPACE command payloads; never use for secrets or production repositories.'}
     }}
   }]
 };

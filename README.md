@@ -15,7 +15,15 @@ Community-maintained integration between [Paperclip AI](https://github.com/paper
 - No blind replay of mutations if the outcome is unknown
 - Configurable API/data-plane endpoints, no server-specific URLs
 
-**Not yet supported:** workspace file transfers, stdin, complete process cleanup after interrupted streams, guaranteed lease expiration, reusable/suspendable sandboxes, prepared Codex/Claude agent images, full Paperclip host integration.
+**Not yet supported for production:** unrestricted workspace transfers, directory mappings, stdin, complete process cleanup after interrupted streams, guaranteed lease expiration, reusable/suspendable sandboxes, prepared Codex/Claude agent images, full Paperclip host integration.
+
+### Experimental workspace file transfer (OFF by default)
+
+SPACE currently provides no supported binary file upload/download endpoint in its public sandbox API. For controlled local testing only, `transferMode: command-experimental` enables `onEnvironmentSyncIn`/`onEnvironmentSyncOut` for **regular individual files**. It transfers base64 data in SPACE command requests or command output. **Command payloads may be retained or logged by the SPACE control plane: never enable this mode for secrets, credentials, company data, or production repositories.**
+
+Safety limits: only files inside `workspace.localPath` and `/paperclip-workspace`; no symlinks, `..` traversal, directories, post-upload commands or automatic retries; maximum **256 KiB per file, 64 files, 4 MiB per sync request**. Exports use a temporary file and atomic rename within the allowed host workspace. These guards do not make this experimental transport production-ready.
+
+For all normal deployments, leave `transferMode: disabled`. Robust streaming file/directory sync over a dedicated authenticated binary transport remains a prerequisite for production.
 
 ## Requirements
 
@@ -34,6 +42,7 @@ Install an approved version through Paperclip's **Settings → Plugins**, then s
 | `timeoutMs` | Request deadline, default 300000 |
 | `allowInsecurePrivateHttp` | Explicit opt-in for single-host private RFC1918 IPv4 HTTP connections |
 | `reuseLease` | Must remain `false` for this alpha |
+| `transferMode` | `disabled` (default) or explicitly `command-experimental` for nonsecret local testing only |
 
 Use HTTPS for network-separated deployments. Do not expose SPACE Kind development credentials or ports publicly, and do not put the management bearer token inside a sandbox.
 
@@ -62,7 +71,8 @@ See [Release instructions](docs/RELEASING.md), [Security policy](SECURITY.md), a
 
 ## Roadmap
 
-- [ ] Source and workspace archive synchronization with symlink/path validation
+- [x] Fail-closed, opt-in experimental single-file sync and path/symlink tests
+- [ ] Production-grade authenticated binary transfer and workspace directory synchronization
 - [ ] Stdin transfer, process cancellation, cleanup/reconciliation after unknown outcomes
 - [ ] Lease ownership, resource isolation, cleanup and recovery
 - [ ] Codex-capable Firecracker template
