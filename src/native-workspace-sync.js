@@ -12,7 +12,7 @@ import {randomUUID} from 'node:crypto';
 import {identifier, WORKSPACE} from './config.js';
 
 const CHUNK = 512 * 1024;
-export const LIMITS = Object.freeze({fileBytes:16*1024*1024, totalBytes:64*1024*1024, files:512, depth:24});
+export const LIMITS = Object.freeze({fileBytes:16*1024*1024, totalBytes:64*1024*1024, files:512, entries:1024, depth:24});
 
 function guestPath(p, rootAllowed = false) {
   if (typeof p !== 'string' || !path.posix.isAbsolute(p) ||
@@ -269,8 +269,9 @@ export async function syncNativeFiles(client,params,direction) {
   await hostGuard(root,root,'directory');
   if (!Array.isArray(params.operations)) throw new Error('Missing Paperclip sync operations');
   const plans=[];
-  let count=0,total=0;
+  let count=0,total=0,entries=0;
   const push=(items,item)=>{
+    if (++entries > LIMITS.entries) throw new Error('Workspace sync entry-count limit exceeded');
     if (item.kind==='file') {
       count++; total+=item.size;
       if (item.size>LIMITS.fileBytes) throw new Error('Workspace file size limit exceeded');

@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import path from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {identifier, parseConfig, shellQuote, WORKSPACE} from './config.js';
 import {readCommandEvents} from './sse.js';
@@ -35,6 +36,8 @@ export class SpaceClient {
   async readFile(id, guestPath, offset, length) {
     id = identifier(id, 'sbx_');
     if (typeof guestPath !== 'string' || !guestPath.startsWith('/paperclip-workspace/') ||
+        guestPath.includes('\0') || guestPath.includes('\\') ||
+        guestPath.split('/').includes('..') || path.posix.normalize(guestPath) !== guestPath ||
         !Number.isSafeInteger(offset) || offset < 0 ||
         !Number.isInteger(length) || length < 1 || length > 512*1024) {
       throw new SpaceError('Invalid SPACE native file read');
