@@ -5,15 +5,37 @@
   "license": "Apache-2.0",
   "type": "module",
   "private": false,
-  "engines": { "node": ">=24.11.0" },
-  "repository": { "type": "git", "url": "git+https://github.com/Snyxex/paperclip-space-provider.git" },
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Snyxex/paperclip-space-provider.git"
+  },
   "homepage": "https://github.com/Snyxex/paperclip-space-provider",
-  "keywords": ["paperclip", "space", "firecracker", "sandbox", "self-hosted"],
+  "keywords": [
+    "paperclip",
+    "space",
+    "firecracker",
+    "sandbox",
+    "self-hosted"
+  ],
   "main": "./dist/index.js",
-  "exports": { ".": "./dist/index.js" },
-  "files": ["dist/", "README.md", "LICENSE"],
-  "paperclipPlugin": { "manifest": "./dist/manifest.js", "worker": "./dist/worker.js" },
-  "dependencies": { "@paperclipai/plugin-sdk": "2026.1012.0" },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "paperclipPlugin": {
+    "manifest": "./dist/manifest.js",
+    "worker": "./dist/worker.js"
+  },
+  "dependencies": {
+    "@paperclipai/plugin-sdk": "2026.1012.0"
+  },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/",
@@ -23,6 +45,7 @@
     "build": "node scripts/build.mjs",
     "test": "node --test",
     "typecheck": "node scripts/build.mjs --verify-only",
-    "pack:check": "npm pack --dry-run"
+    "pack:check": "npm pack --dry-run",
+    "test:space:integration": "node examples/native-sync-integration.mjs"
   }
 }
