@@ -15,6 +15,9 @@ This is a **manual**, explicit test of the experimental native filesystem transp
 ```bash
 git clone https://github.com/Snyxex/paperclip-space-provider.git
 cd paperclip-space-provider
+# Test the exact PR #9 source while it is still under review:
+git fetch origin pull/9/head:integration-pr9
+git switch integration-pr9
 
 node --version
 npm ci --ignore-scripts --no-audit --fund=false
