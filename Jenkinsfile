@@ -16,13 +16,13 @@ pipeline {
   }
   stages {
     stage('Checkout') { steps { checkout scm } }
-    stage('Toolchain and ownership') {
+    stage('Toolchain and package metadata') {
       steps { sh '''
         set -eu
         node --version
         npm --version
         node -e 'const [major, minor]=process.versions.node.split(".").map(Number); if(major<24||(major===24&&minor<11)) process.exit(1)'
-        node -e 'const p=require("./package.json"); if(p.name!=="@snyxex/paperclip-space-provider") throw new Error("Unexpected npm scope")'
+        node -e 'const p=require("./package.json"); if(p.name!=="paperclip-space-provider"||p.private!==true) throw new Error("Unexpected development package metadata")'
       ''' }
     }
     stage('Install locked dependencies') {

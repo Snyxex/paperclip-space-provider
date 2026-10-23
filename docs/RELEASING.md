@@ -1,61 +1,51 @@
-# Jenkins + npm staged releases
+# Jenkins and npm staged releases
 
-## Ownership and package naming
+## Neutral project identity
 
-- The GitHub repository is `Snyxex/paperclip-space-provider`, owned by the **personal** GitHub account `Snyxex`.
-- Personal projects publish only under the **personal npm account** `snyxex`, using `@snyxex/*`.
-- This provider's package name is **`@snyxex/paperclip-space-provider`**. Do not create an npm organization for personal projects.
-- A future move into a team/company is a **separate migration**. Changing the npm scope changes the package name; publish a new scoped package, redirect consumers, and deprecate the old package only when ready. GitHub repository transfers and npm package moves are not automatically coupled.
+The source tree must not contain a personal GitHub handle, npm username, email address, hostname, or private infrastructure URL.
+
+The development package identifier is **`paperclip-space-provider`** and `package.json` has **`"private": true`**. The package is deliberately **not publishable** in this state. The repository location is configured externally by an administrator, not committed in the release pipeline.
+
+Before an independently reviewed release, an authorized maintainer must choose a scoped npm package name under an account or organization they control (for example, `@organization/paperclip-space-provider`, where `organization` is an explicitly substituted placeholder). Update `package.json`, `package-lock.json`, CI checks, and any distribution metadata as one reviewed change. There is no implicit or automatic npm scope migration.
 
 ## Branch and publication policy
 
-**Only the current `origin/main` tip may become a new npm version.**
+Only the **current origin/main HEAD** may become a release.
 
-1. Feature branches and pull requests may run CI, but **never stage or publish packages**.
-2. Merge the reviewed change into the protected `main` branch.
-3. Create an annotated or lightweight release tag such as `v0.1.0-alpha.1` pointing to **the current main HEAD**, then push the tag.
-4. Start a **separate, manually approved** Jenkins release job on a trusted executor. Select the tag as `RELEASE_TAG`, and check out its commit from the repository.
-5. `ci/stage-npm.sh` fetches the current remote `main` and the selected remote tag, then refuses release unless `HEAD = tag commit = origin/main HEAD`. A historical main commit is not release-eligible, even if it was once main HEAD.
-6. Jenkins stages the package using npm stage-only credentials. A maintainer then inspects and approves the stage using npm 2FA. Nothing can automatically go live from a branch build.
+1. Branches and pull requests run credential-free Jenkins CI and must never receive npm write credentials.
+2. Merge reviewed code into the protected `main` branch after successful checks.
+3. Create and push an annotated or lightweight version tag (for example `v0.1.0-alpha.1`) at the **current `main` commit**.
+4. Start a separate, access-controlled Jenkins release job on a trusted executor. It must be managed outside the repository's untrusted pull-request jobs.
+5. Require a human approval before binding credentials.
+6. The staging script refuses release unless `HEAD = release tag = origin/main HEAD` and package metadata matches an **explicitly configured** `EXPECTED_NPM_PACKAGE`.
+7. npm staging and final approval remain separate human-reviewed actions; never automatically publish from branch builds.
 
-Releases may still pass through `next` for prerelease versions and `latest` for stable versions; npm dist-tags are not Git branches.
+## Trusted release job configuration
 
-## Jenkins separation
+`ci/Jenkinsfile.release.example` is a template, **not** a job for PR discovery. The administrator must configure these values in a trusted job environment, not as untrusted PR content or arbitrary user-provided build parameters:
 
-- **Normal `Jenkinsfile`:** PR/main branch CI **without npm write credentials**. No release stage.
-- **Trusted release job:** an independently configured, access-controlled, manually triggered job with **no PR discovery**. Configure the trusted release pipeline outside untrusted PR code and use a clean executor.
-- The `npm-stage-only` Jenkins credential must be available **only** to the trusted release job; no secret binding in branch/PR builds.
-- The release job checks out the exact `RELEASE_TAG` commit, invokes `ci/stage-npm.sh`, and binds `NPM_TOKEN` only after manual operator approval.
-- Protect `main` with required reviews and CI. Restrict creating and changing `v*` tags to maintainers through GitHub repository rulesets.
-- Use a clean workspace, isolated Jenkins agents and minimum GitHub credentials. Avoid sharing a credential-bearing agent with arbitrary code.
-- Review scripts and package dependencies before permitting release; `npm ci --ignore-scripts` deliberately blocks install lifecycle scripts.
+- `RELEASE_REPOSITORY_URL`: the actual approved Git repository URL; no account-specific URL is embedded in source.
+- `EXPECTED_NPM_PACKAGE`: the reviewed scoped package name matching `package.json`; must end in `/paperclip-space-provider`.
+- `npm-stage-only`: a Jenkins **Secret text** credential containing a narrowly scoped npm token for the reviewed package. Only the trusted job may access it.
+- `RELEASE_TAG`: the reviewed version tag, supplied only to the protected release job.
+- Node.js >=24.11 and npm >=11.15; a fresh dedicated release executor with no untrusted jobs.
 
-## npm setup
+The exact package name is intentionally not configured until the project has an authorized distribution owner. `ci/stage-npm.sh` fails closed when the metadata is still private, the scope is absent, or `EXPECTED_NPM_PACKAGE` does not match.
 
-1. Confirm access to the **personal npm user account `snyxex`**, enable phishing-resistant 2FA, and verify `@snyxex` is its personal scope.
-2. Include `"name": "@snyxex/paperclip-space-provider"` and `"publishConfig": {"access": "public", "registry": "https://registry.npmjs.org/"}` in the package metadata when source is imported.
-3. Use Node.js >= 24.11.0 and npm CLI >= 11.15.0 on the release executor.
-4. Create a narrowly scoped, short-lived **Read and write (stage only)** granular access token (prefer restriction to this specific package once it exists). Store as Jenkins **Secret text**, ID `npm-stage-only`.
-5. Keep the token out of `.npmrc` checked into source, Jenkins job logs, shell history and source files.
+Stage-only tokens can retain sensitive write capabilities. Keep them out of the repository, shell history, logs, ordinary Jenkins jobs and shared workspaces.
 
-Stage-only tokens still have some non-publish write privileges, including deprecations and dist-tag changes. Protect them as sensitive credentials.
+## Manual staging review
 
-## Release job steps
+1. Confirm the branch and tag match and the release scope is controlled by the maintainers.
+2. Review dependency licenses, security audit, workspace-transfer safety and integration results.
+3. Trigger the separate job for `RELEASE_TAG` and approve npm staging.
+4. Inspect the staged version using `npm stage list`, `npm stage view <stage-id>` or `npm stage download <stage-id>`.
+5. Approve public release manually with the required npm 2FA only when the package has passed the release gates.
 
-Create a dedicated Jenkins Pipeline job (not the repo's `Jenkinsfile` PR pipeline). Use a trusted, admin-managed pipeline definition and these logical steps:
+Never move a published tag or bypass the `main` tip requirement. No real-VM SPACE integration, production security review, or approved release has occurred yet.
 
-1. Require `RELEASE_TAG` and an operator approval.
-2. Check out the approved tag in a fresh checkout of `https://github.com/Snyxex/paperclip-space-provider.git`.
-3. Make `NPM_TOKEN` available only around the `ci/stage-npm.sh` invocation. The script performs the **current main** and package-name checks before staging.
-4. Review the staged version using `npm stage list`, `npm stage view <stage-id>` or `npm stage download <stage-id>` and approve with npm 2FA.
+## References
 
-The script is intentionally fail-closed if `main` advances after the tag was created. Create a new reviewed release tag on the new main HEAD as needed; never move published tags.
-
-## Status
-
-The experimental provider source and package metadata have now been imported. The **package-lock.json is missing**, end-to-end host compatibility and workspace synchronization are incomplete, and **neither Jenkins release publishing nor npm publication is currently enabled or tested**. No tag or staging release should be created.
-
-npm references:
 - https://docs.npmjs.com/staged-publishing/
 - https://docs.npmjs.com/about-access-tokens/
 - https://docs.npmjs.com/about-scopes/

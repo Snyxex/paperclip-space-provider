@@ -14,8 +14,12 @@ fi
 
 node - <<'NODE'
 const p = require('./package.json');
-if (p.name !== '@snyxex/paperclip-space-provider') throw new Error('Unexpected package');
-if (p.private === true) throw new Error('Package marked private');
+const target = process.env.EXPECTED_NPM_PACKAGE;
+if (!target || !/^@[a-z0-9][a-z0-9._-]*\/paperclip-space-provider$/.test(target)) {
+  throw new Error('Release target must be an explicitly configured scoped package');
+}
+if (p.name !== target) throw new Error('Configured npm package and package.json do not match');
+if (p.private !== false) throw new Error('Package marked private; release disabled until explicit review');
 NODE
 
 version="$(node -p 'require("./package.json").version')"
