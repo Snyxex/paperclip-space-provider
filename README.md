@@ -2,7 +2,7 @@
 
 Community-maintained integration between [Paperclip AI](https://github.com/paperclipai/paperclip) and [Perplexity SPACE](https://github.com/perplexityai/SPACE), using isolated Firecracker microVM sandboxes.
 
-**Status: experimental alpha — not ready for production or real source repositories.** This source release is not yet published on npm. The secure workspace synchronization, process cancellation, stdin and persistent session features are incomplete.
+**Status: experimental alpha — not ready for production or real source repositories.** This source release is not yet published on npm. The production workspace synchronization, process cancellation, stdin and persistent session features remain incomplete.
 
 > Independent project; not officially affiliated with Paperclip AI or Perplexity.
 
@@ -15,15 +15,19 @@ Community-maintained integration between [Paperclip AI](https://github.com/paper
 - No blind replay of mutations if the outcome is unknown
 - Configurable API/data-plane endpoints, no server-specific URLs
 
-**Not yet supported for production:** unrestricted workspace transfers, directory mappings, stdin, complete process cleanup after interrupted streams, guaranteed lease expiration, reusable/suspendable sandboxes, prepared Codex/Claude agent images, full Paperclip host integration.
+**Not yet supported for production:** fully verified workspace transfer, stdin, complete process cleanup after interrupted streams, guaranteed lease expiration, reusable/suspendable sandboxes, prepared Codex/Claude agent images, full Paperclip host integration.
 
 ### Experimental workspace file transfer (OFF by default)
 
-SPACE currently provides no supported binary file upload/download endpoint in its public sandbox API. For controlled local testing only, `transferMode: command-experimental` enables `onEnvironmentSyncIn`/`onEnvironmentSyncOut` for **regular individual files**. It transfers base64 data in SPACE command requests or command output. **Command payloads may be retained or logged by the SPACE control plane: never enable this mode for secrets, credentials, company data, or production repositories.**
+The older, explicitly unsafe development option `transferMode: command-experimental` enables `onEnvironmentSyncIn`/`onEnvironmentSyncOut` for **regular individual files**. It transfers base64 data in SPACE command requests or command output. **Command payloads may be retained or logged by the SPACE control plane: never enable this mode for secrets, credentials, company data, or production repositories.**
 
 Safety limits: only files inside `workspace.localPath` and `/paperclip-workspace`; no symlinks, `..` traversal, directories, post-upload commands or automatic retries; maximum **256 KiB per file, 64 files, 4 MiB per sync request**. Exports use a temporary file and atomic rename within the allowed host workspace. These guards do not make this experimental transport production-ready.
 
-For all normal deployments, leave `transferMode: disabled`. Robust streaming file/directory sync over a dedicated authenticated binary transport remains a prerequisite for production.
+SPACE's newer public API includes **incubating native filesystem endpoints** (POST `files:stat/list/read/write/mkdir/rename/remove`). The new `transferMode: native-incubating` option supports bounded regular-file and recursive-directory mappings with an authenticated SPACE management API. Uploads use JSON base64 file bodies (not shell commands); downloads stream binary `application/octet-stream`. It performs lexical path confinement, local symlink/hardlink checks, guest stat checks, guest staging and rename, and temporary host downloads. Files are limited to 16 MiB each, requests to 64 MiB/512 files, and recursion to 24 levels. Exclude globs are supported; post-upload commands and symlink following are not yet supported.
+
+**This mode remains preproduction:** the SPACE file APIs are marked *Incubating*, the deployed SPACE version on node02 is unverified, concurrent filesystem mutation remains a potential TOCTOU risk, and real Paperclip host integration has not been tested. Partial directory operations are not transactional. Do not use untrusted tenant repositories or production credentials yet. See [Native sync security and integration checklist](docs/NATIVE_SYNC.md).
+
+For all normal deployments, leave `transferMode: disabled`. Never set `command-experimental` with credentials or private data.
 
 ## Requirements
 
@@ -42,7 +46,7 @@ Install an approved version through Paperclip's **Settings → Plugins**, then s
 | `timeoutMs` | Request deadline, default 300000 |
 | `allowInsecurePrivateHttp` | Explicit opt-in for single-host private RFC1918 IPv4 HTTP connections |
 | `reuseLease` | Must remain `false` for this alpha |
-| `transferMode` | `disabled` (default) or explicitly `command-experimental` for nonsecret local testing only |
+| `transferMode` | `disabled` (default), `native-incubating` (native SPACE API, preproduction), or `command-experimental` (unsafe shell-payload POC) |
 
 Use HTTPS for network-separated deployments. Do not expose SPACE Kind development credentials or ports publicly, and do not put the management bearer token inside a sandbox.
 
@@ -72,7 +76,8 @@ See [Release instructions](docs/RELEASING.md), [Security policy](SECURITY.md), a
 ## Roadmap
 
 - [x] Fail-closed, opt-in experimental single-file sync and path/symlink tests
-- [ ] Production-grade authenticated binary transfer and workspace directory synchronization
+- [x] Bounded native SPACE file/directory sync, behind explicit preproduction opt-in
+- [ ] Full production qualification: adversarial filesystem/TOCTOU review, real SPACE Firecracker VM and Paperclip host integration, cancellation and failure recovery
 - [ ] Stdin transfer, process cancellation, cleanup/reconciliation after unknown outcomes
 - [ ] Lease ownership, resource isolation, cleanup and recovery
 - [ ] Codex-capable Firecracker template

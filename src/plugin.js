@@ -2,6 +2,7 @@ import {definePlugin} from '@paperclipai/plugin-sdk';
 import {parseConfig, WORKSPACE} from './config.js';
 import {SpaceClient} from './space-client.js';
 import {syncFiles} from './workspace-sync.js';
+import {syncNativeFiles} from './native-workspace-sync.js';
 
 let context = null;
 const client = (params) => new SpaceClient(params.config);
@@ -73,11 +74,15 @@ const plugin = definePlugin({
   },
   async onEnvironmentSyncIn(params) {
     checkLease(params);
-    return syncFiles(client(params), params, 'in');
+    const c = client(params);
+    return c.config.transferMode === 'native-incubating'
+      ? syncNativeFiles(c, params, 'in') : syncFiles(c, params, 'in');
   },
   async onEnvironmentSyncOut(params) {
     checkLease(params);
-    return syncFiles(client(params), params, 'out');
+    const c = client(params);
+    return c.config.transferMode === 'native-incubating'
+      ? syncNativeFiles(c, params, 'out') : syncFiles(c, params, 'out');
   },
   async onEnvironmentExecute(params) {
     const id = checkLease(params);

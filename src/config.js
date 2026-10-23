@@ -34,8 +34,8 @@ export function parseConfig(raw) {
   const timeoutMs = Number(raw.timeoutMs ?? 300_000);
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 3_600_000) throw new Error('timeoutMs must be 1000..3600000');
   const transferMode = raw.transferMode ?? 'disabled';
-  if (!['disabled', 'command-experimental'].includes(transferMode)) {
-    throw new Error('Invalid transferMode; use disabled or command-experimental');
+  if (!['disabled', 'command-experimental', 'native-incubating'].includes(transferMode)) {
+    throw new Error('Invalid transferMode; use disabled, command-experimental or native-incubating');
   }
   const resources = {};
   for (const [key, lower, upper] of [['vcpu',1,4], ['memory_mib',256,8192], ['disk_mib',512,20480]]) {
