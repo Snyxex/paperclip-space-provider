@@ -1,0 +1,104 @@
+import {randomUUID} from 'node:crypto';
+import {setTimeout as sleep} from 'node:timers/promises';
+import {identifier, parseConfig, shellQuote, WORKSPACE} from './config.js';
+import {readCommandEvents} from './sse.js';
+
+export class SpaceError extends Error {
+  constructor(message, status = null) {super(message); this.name = 'SpaceError'; this.status = status;}
+}
+function bodyObject(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new SpaceError('Invalid SPACE JSON response');
+  return obj;
+}
+export class SpaceClient {
+  constructor(raw, fetchImpl = fetch) {this.config = parseConfig(raw); this.fetchImpl = fetchImpl;}
+  async request(origin, path, {method='GET', body, key, token, timeoutMs} = {}) {
+    if (!path.startsWith('/') || path.startsWith('//')) throw new Error('Unsafe SPACE API path');
+    const ms = timeoutMs ?? this.config.timeoutMs;
+    let response;
+    try {
+      response = await this.fetchImpl(origin + path, {
+        method, redirect: 'error', signal: AbortSignal.timeout(ms),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token ?? this.config.token}`,
+          ...(body !== undefined ? {'Content-Type': 'application/json'} : {}),
+          ...(key ? {'Idempotency-Key': key} : {}),
+        },
+        ...(body !== undefined ? {body: JSON.stringify(body)} : {}),
+      });
+    } catch {throw new SpaceError('SPACE API request failed or timed out (no automatic mutation retry)');}
+    if (!response.ok) {await response.body?.cancel().catch(() => {}); throw new SpaceError(`SPACE API returned HTTP ${response.status}`, response.status);}
+    try {return bodyObject(await response.json());} catch {throw new SpaceError('SPACE returned invalid JSON');}
+  }
+  api(path, options) {return this.request(this.config.apiUrl, path, options);}
+  async wait(path, state, timeoutMs = this.config.timeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const data = await this.api(path, {timeoutMs: Math.min(30_000, Math.max(1000, deadline - Date.now()))});
+      if (data.state === state) return data;
+      if (['failed', 'canceled', 'expired', 'deleted', 'deleting', 'stopped'].includes(data.state)) throw new SpaceError(`SPACE state ${data.state}; expected ${state}`);
+      if (Date.now() >= deadline) throw new SpaceError(`Timed out waiting for SPACE state ${state}`);
+      await sleep(1000);
+    }
+  }
+  async create() {
+    const body = {template: this.config.template, runtime: 'fc'};
+    if (Object.keys(this.config.resources).length) body.resources = this.config.resources;
+    // Do not blindly retry POST: an unknown response may have created the VM.
+    const created = await this.api('/v1/sandboxes', {method: 'POST', body, key: randomUUID()});
+    const sandboxId = identifier(created.sandbox_id, 'sbx_');
+    const operationId = identifier(created.operation_id, 'op_');
+    try {
+      await this.wait(`/v1/operations/${operationId}`, 'succeeded');
+      await this.wait(`/v1/sandboxes/${sandboxId}`, 'running');
+      const processes = await this.api(`/v1/sandboxes/${sandboxId}/processes?limit=1`);
+      if (!Array.isArray(processes.data)) throw new SpaceError('Sandbox readiness response is invalid');
+    } catch (err) {throw new SpaceError(`Sandbox ${sandboxId} created but readiness is uncertain; inspect and manually clean up. ${err.message}`);}
+    return sandboxId;
+  }
+  async inspect(id) {return this.api(`/v1/sandboxes/${identifier(id, 'sbx_')}`);}
+  async destroy(id) {
+    id = identifier(id, 'sbx_');
+    const result = await this.api(`/v1/sandboxes/${id}`, {method: 'DELETE', key: randomUUID()});
+    const opId = identifier(result.operation_id, 'op_');
+    await this.wait(`/v1/operations/${opId}`, 'succeeded');
+  }
+  async exec(id, command, args = [], options = {}, log = () => {}) {
+    id = identifier(id, 'sbx_');
+    if (typeof command !== 'string' || !command || !Array.isArray(args) || args.some(x=>typeof x !== 'string')) throw new Error('Invalid command');
+    if (options.stdin !== undefined && options.stdin !== null) throw new Error('Sandbox stdin staging not yet supported in alpha');
+    const timeoutMs = options.timeoutMs ?? this.config.timeoutMs;
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 3_600_000) throw new Error('Invalid command timeout');
+    const env = options.env ?? {};
+    const assignments = Object.entries(env).map(([key, value])=>{
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || typeof value !== 'string') throw new Error('Invalid environment variable');
+      return `${key}=${shellQuote(value)}`;
+    });
+    const script = `exec env ${assignments.join(' ')} ${[command, ...args].map(shellQuote).join(' ')}`;
+    const cwd = options.cwd;
+    if (cwd !== undefined && (typeof cwd !== 'string' || !cwd.startsWith('/') || cwd.includes('\0'))) throw new Error('Invalid sandbox working directory');
+    const payload = {command: ['sh', '-c', script], timeout: `${Math.ceil(timeoutMs/1000)}s`, ...(cwd ? {cwd} : {})};
+    // Never retry command creation blindly; it may already be executing.
+    const result = await this.api(`/v1/sandboxes/${id}/commands`, {method: 'POST', body: payload, key: randomUUID()});
+    const sessionId = identifier(result.session_id, 'proc_');
+    const eventsPath = `/v1/sessions/${sessionId}/events`;
+    const fullUrl = this.config.dataPlaneUrl + eventsPath;
+    if (result.attach?.events_url !== eventsPath && result.attach?.events_url !== fullUrl) throw new SpaceError('SPACE returned an unexpected command stream destination');
+    if (typeof result.attach.token !== 'string' || !result.attach.token) throw new SpaceError('SPACE command attach token is missing');
+    let response;
+    try {
+      response = await this.fetchImpl(fullUrl, {
+        method:'GET', redirect:'error',
+        headers: {'Authorization': `Bearer ${result.attach.token}`, 'Accept': 'text/event-stream'},
+        signal: AbortSignal.timeout(timeoutMs + 15_000),
+      });
+    } catch {throw new SpaceError('SPACE command stream failed; do not rerun the command automatically');}
+    return readCommandEvents(response, log);
+  }
+  async ensureWorkspace(id) {
+    const r = await this.exec(id, 'mkdir', ['-p', WORKSPACE]);
+    if (r.exitCode !== 0) throw new SpaceError('Could not prepare sandbox workspace');
+    return WORKSPACE;
+  }
+}

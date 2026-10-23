@@ -53,7 +53,7 @@ The script is intentionally fail-closed if `main` advances after the tag was cre
 
 ## Status
 
-The provider source, `package.json` and lockfile still need to be imported. **Neither Jenkins release publishing nor npm publication is currently enabled or tested.**
+The experimental provider source and package metadata have now been imported. The **package-lock.json is missing**, end-to-end host compatibility and workspace synchronization are incomplete, and **neither Jenkins release publishing nor npm publication is currently enabled or tested**. No tag or staging release should be created.
 
 npm references:
 - https://docs.npmjs.com/staged-publishing/

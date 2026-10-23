@@ -1,46 +1,74 @@
 # Paperclip SPACE Provider
 
-Open-source integration for running [Paperclip AI](https://github.com/paperclipai/paperclip) agent workloads in [Perplexity SPACE](https://github.com/perplexityai/SPACE) Firecracker microVM sandboxes.
+Community-maintained integration between [Paperclip AI](https://github.com/paperclipai/paperclip) and [Perplexity SPACE](https://github.com/perplexityai/SPACE), using isolated Firecracker microVM sandboxes.
 
-> **Status: pre-release / experimental.** The original `0.1.0-alpha.1` prototype was tested locally against SPACE, but is not yet uploaded to this repository or validated for production. Do not install it on a production Paperclip instance.
+**Status: experimental alpha — not ready for production or real source repositories.** This source release is not yet published on npm. The secure workspace synchronization, process cancellation, stdin and persistent session features are incomplete.
 
-## Project goals
+> Independent project; not officially affiliated with Paperclip AI or Perplexity.
 
-- Use Paperclip's documented `sandbox_provider` plugin interface, without patching Paperclip.
-- Self-host the sandbox control plane and Firecracker workers.
-- Support sandbox lifecycle, commands, live streams, safe workspace synchronization, quotas and cleanup.
-- Keep SPACE management credentials outside sandboxes and outside source control.
+## Features currently implemented
 
-## Current status
+- Paperclip plugin manifest, worker, and sandbox-provider hooks
+- SPACE sandbox create/inspect/delete and readiness polling
+- Command execution with bounded timeouts and command-stream attachment
+- SSE stdout/stderr decoding with separate short-lived stream token
+- No blind replay of mutations if the outcome is unknown
+- Configurable API/data-plane endpoints, no server-specific URLs
 
-- Public repository and secure Jenkins CI/release scaffolding are established.
-- Provider source, complete workspace synchronization, Codex-ready template and end-to-end integration tests are **not yet published here**.
-- No npm release has been created or authorized.
+**Not yet supported:** workspace file transfers, stdin, complete process cleanup after interrupted streams, guaranteed lease expiration, reusable/suspendable sandboxes, prepared Codex/Claude agent images, full Paperclip host integration.
 
-## CI and publishing
+## Requirements
 
-The normal `Jenkinsfile` runs **without credentials**. It intentionally requires `package.json` and a committed `package-lock.json`; before the provider source is added, CI is not ready to pass.
+Node.js 24.11+ for the eventual Paperclip worker, a compatible Paperclip plugin host and self-hosted SPACE cluster. The built-in SPACE `seed:latest` template is for smoke testing; agent execution requires a prepared VM image with Node.js, shell, tar, and the selected agent CLI.
 
-A separate, trusted Jenkins release job can invoke `ci/stage-npm.sh` only for an approved tag pointing to the **current `main` commit**. No releases are created from PRs, feature branches, or detached historical commits. It must use an npm **stage-only** token and an isolated executor. Jenkins stages the package; a human reviews and approves the staged version with npm 2FA. **Never give npm credentials to pull-request jobs.**
+## Environment configuration
 
-All personal GitHub projects under `Snyxex` publish under the personal npm scope **`@snyxex`**, starting with `@snyxex/paperclip-space-provider`. A move into an organization is a separate, explicit migration.
+Install an approved version through Paperclip's **Settings → Plugins**, then select the **SPACE** environment provider. Alpha is **not installable as a production-ready package yet**.
 
-Read [Release & Jenkins setup](docs/RELEASING.md) before configuring the release job.
+| Config key | Description |
+| --- | --- |
+| `apiUrl` | Base origin of the SPACE management API |
+| `dataPlaneUrl` | Base origin of SPACE's command event stream API |
+| `apiToken` | SPACE management credential stored as a Paperclip secret |
+| `template` | SPACE template reference, defaults to `seed:latest` |
+| `timeoutMs` | Request deadline, default 300000 |
+| `allowInsecurePrivateHttp` | Explicit opt-in for single-host private RFC1918 IPv4 HTTP connections |
+| `reuseLease` | Must remain `false` for this alpha |
+
+Use HTTPS for network-separated deployments. Do not expose SPACE Kind development credentials or ports publicly, and do not put the management bearer token inside a sandbox.
 
 ## Development
 
-Use Node.js >= 24.11.0, a compatible npm CLI and Paperclip plugin SDK. The provider source and lockfile must be added before running:
-
 ```bash
-npm ci
+npm run build
 npm test
 npm pack --dry-run
 ```
 
-## Security
+These commands run protocol-level tests with mocked SPACE responses. They do not prove runtime compatibility or fully validate package dependencies. A reviewed `package-lock.json` must be generated and committed before release.
 
-Report suspected security vulnerabilities privately using the process in [SECURITY.md](SECURITY.md). Do not create public issues containing secrets, tokens, exploit payloads or private infrastructure details.
+The optional `node examples/smoke.mjs` test **creates a real VM** and requires `SPACE_API_URL`, `SPACE_DATA_PLANE_URL`, and `SPACE_API_TOKEN` from a disposable installation. For an isolated private HTTP bridge, also set `SPACE_ALLOW_INSECURE_PRIVATE_HTTP=true`.
+
+## npm and Jenkins
+
+- GitHub: [Snyxex/paperclip-space-provider](https://github.com/Snyxex/paperclip-space-provider)
+- Personal npm scope: **`@snyxex/paperclip-space-provider`** (not `@snyxe/*`)
+- Pull requests and branch builds run credential-free Jenkins CI.
+- **Only a reviewed release tag at the current `main` HEAD** can be staged by the separately approved release job.
+- npm staged publishing requires a maintainer's subsequent 2FA approval. No automated direct publish.
+- A future transfer to a team is a deliberate GitHub and npm package migration.
+
+See [Release instructions](docs/RELEASING.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
+
+## Roadmap
+
+- [ ] Source and workspace archive synchronization with symlink/path validation
+- [ ] Stdin transfer, process cancellation, cleanup/reconciliation after unknown outcomes
+- [ ] Lease ownership, resource isolation, cleanup and recovery
+- [ ] Codex-capable Firecracker template
+- [ ] Verified current Paperclip SDK/plugin-host compatibility and integration tests
+- [ ] Dependency lockfile, supply-chain review and production release gate
 
 ## License
 
-Apache-2.0. The provider is an independent community project and is not an official Paperclip or Perplexity product.
+Apache-2.0, see [LICENSE](LICENSE).

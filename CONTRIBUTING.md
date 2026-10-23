@@ -1,7 +1,7 @@
 # Contributing
 
-Contributions are welcome after the initial source import. Open an issue before a major API or security architecture change.
+This SPACE sandbox provider is currently experimental and should not be used with production credentials or real source repositories.
 
-Please include tests for all lifecycle and stream-handling changes. Feature branches and pull requests never produce npm releases; only a reviewed release tag at the current `main` HEAD may be staged. The sandbox isolation boundary and host workspace synchronization are security-sensitive; avoid speculative changes without a threat-model discussion.
+Open an issue before major API or security-boundary changes. Please include tests for mutations, command streams, cancellation and workspace file transfers. VM and host files cross a trust boundary: all host-path and archive security checks must be enforced outside the VM.
 
-Never commit tokens, credentials, private hostnames or production configuration. PR jobs are deliberately unprivileged and cannot access npm release credentials.
+Do not commit tokens, environment secrets or private infrastructure details. Branch and PR CI must never receive npm write credentials. Only a reviewed release tag on the current `main` HEAD can enter a separate, approved npm staged release.

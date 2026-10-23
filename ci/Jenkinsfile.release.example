@@ -1,0 +1,41 @@
+// TEMPLATE ONLY. Copy to an admin-managed Jenkins job configuration.
+// Never run this via an untrusted PR branch Jenkinsfile or give PR jobs npm tokens.
+pipeline {
+  agent { label 'npm-release' }
+  options { skipDefaultCheckout(); disableConcurrentBuilds(); timestamps(); timeout(time:45,unit:'MINUTES') }
+  parameters { string(name:'RELEASE_TAG',defaultValue:'',description:'Approved tag at CURRENT main HEAD') }
+  stages {
+    stage('Validate release request') {
+      steps { script {
+        if (!(params.RELEASE_TAG ==~ /^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$/))
+          error('Invalid release tag')
+      } }
+    }
+    stage('Operator approval') {
+      steps { input message:"Stage ${params.RELEASE_TAG} from current main HEAD on npm?",ok:'Approve staging' }
+    }
+    stage('Checkout approved tag') {
+      steps {
+        deleteDir()
+        git branch:'main',url:'https://github.com/Snyxex/paperclip-space-provider.git'
+        withEnv(["RELEASE_TAG=${params.RELEASE_TAG}"]) {
+          sh '''
+            set -eu
+            git fetch --no-tags origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+            git checkout --detach "refs/tags/${RELEASE_TAG}"
+          '''
+        }
+      }
+    }
+    stage('Stage on npm (NO direct publishing)') {
+      steps {
+        withEnv(["RELEASE_TAG=${params.RELEASE_TAG}"]) {
+          withCredentials([string(credentialsId:'npm-stage-only',variable:'NPM_TOKEN')]) {
+            sh 'set +x; bash ci/stage-npm.sh'
+          }
+        }
+      }
+    }
+  }
+  post { always { deleteDir() } }
+}
