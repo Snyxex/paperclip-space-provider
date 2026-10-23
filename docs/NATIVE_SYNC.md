@@ -25,7 +25,7 @@ These operations are Incubating, not stable M1. The earlier command-experimental
 
 ## Blockers before production or npm release
 
-1. **Disposable VM integration** on node02: confirm SPACE deployment implements the exact incubating API, run binary/nested-directory round trips, empty files, excludes, large files, midtransfer failures, and verify cleanup. Do not supply company code or private secrets.
+1. **Disposable VM integration** on an isolated test host (see [manual integration test](INTEGRATION.md); never auto-run in Jenkins): confirm SPACE deployment implements the exact incubating API, run binary/nested-directory round trips, empty files, excludes, large files, midtransfer failures, and verify cleanup. Do not supply company code or private secrets.
 2. **Adversarial race review:** host and guest filesystems can change between stat and read/write/rename; per-operation path checks reduce accidental escapes but cannot guarantee race-free isolation against hostile concurrent writers. For multi-tenant untrusted inputs, require a stronger root-descriptor-based approach and guest-side filesystem containment guarantees.
 3. **Cancellation and timeout cleanup:** add AbortSignal propagation, bounded execution, reconciliation of unknown mutation outcomes, and auditing without leaking file bytes.
 4. **Directory atomicity:** multiple files are not a single transaction; if a later file fails, earlier paths may already have changed. Implement staging/manifest validation and recovery strategy where needed.

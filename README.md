@@ -25,7 +25,7 @@ Safety limits: only files inside `workspace.localPath` and `/paperclip-workspace
 
 SPACE's newer public API includes **incubating native filesystem endpoints** (POST `files:stat/list/read/write/mkdir/rename/remove`). The new `transferMode: native-incubating` option supports bounded regular-file and recursive-directory mappings with an authenticated SPACE management API. Uploads use JSON base64 file bodies (not shell commands); downloads stream binary `application/octet-stream`. It performs lexical path confinement, local symlink/hardlink checks, guest stat checks, guest staging and rename, and temporary host downloads. Files are limited to 16 MiB each, requests to 64 MiB/512 files, and recursion to 24 levels. Exclude globs are supported; post-upload commands and symlink following are not yet supported.
 
-**This mode remains preproduction:** the SPACE file APIs are marked *Incubating*, the deployed SPACE version on node02 is unverified, concurrent filesystem mutation remains a potential TOCTOU risk, and real Paperclip host integration has not been tested. Partial directory operations are not transactional. Do not use untrusted tenant repositories or production credentials yet. See [Native sync security and integration checklist](docs/NATIVE_SYNC.md).
+**This mode remains preproduction:** the SPACE file APIs are marked *Incubating*, the deployed SPACE version in the integration environment is unverified, concurrent filesystem mutation remains a potential TOCTOU risk, and real Paperclip host integration has not been tested. Partial directory operations are not transactional. Do not use untrusted tenant repositories or production credentials yet. See [Native sync security and integration checklist](docs/NATIVE_SYNC.md).
 
 For all normal deployments, leave `transferMode: disabled`. Never set `command-experimental` with credentials or private data.
 
@@ -58,18 +58,16 @@ npm test
 npm pack --dry-run
 ```
 
-These commands run protocol-level tests with mocked SPACE responses. They do not prove runtime compatibility or fully validate package dependencies. A reviewed `package-lock.json` must be generated and committed before release.
+These commands run protocol-level tests with mocked SPACE responses. They do not prove runtime compatibility or fully validate package dependencies. A committed `package-lock.json` is present; future release metadata changes must keep it synchronized.
 
 The optional `node examples/smoke.mjs` test **creates a real VM** and requires `SPACE_API_URL`, `SPACE_DATA_PLANE_URL`, and `SPACE_API_TOKEN` from a disposable installation. For an isolated private HTTP bridge, also set `SPACE_ALLOW_INSECURE_PRIVATE_HTTP=true`.
 
 ## npm and Jenkins
 
-- GitHub: [Snyxex/paperclip-space-provider](https://github.com/Snyxex/paperclip-space-provider)
-- Personal npm scope: **`@snyxex/paperclip-space-provider`** (not `@snyxe/*`)
-- Pull requests and branch builds run credential-free Jenkins CI.
-- **Only a reviewed release tag at the current `main` HEAD** can be staged by the separately approved release job.
-- npm staged publishing requires a maintainer's subsequent 2FA approval. No automated direct publish.
-- A future transfer to a team is a deliberate GitHub and npm package migration.
+- The repository is intended to be independent of individual developer accounts or infrastructure.
+- Development package identifier: `paperclip-space-provider`. The package is **private** and cannot currently be published.
+- Before any distribution, maintainers must select an npm scope they control and update package metadata, lockfile, tests and the separately approved release pipeline.
+- Pull requests and branch builds run credential-free Jenkins CI. A release is only eligible from a reviewed tag at the current `main` HEAD, after an explicit approval and npm 2FA. No direct automated publication.
 
 See [Release instructions](docs/RELEASING.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 
@@ -82,7 +80,7 @@ See [Release instructions](docs/RELEASING.md), [Security policy](SECURITY.md), a
 - [ ] Lease ownership, resource isolation, cleanup and recovery
 - [ ] Codex-capable Firecracker template
 - [ ] Verified current Paperclip SDK/plugin-host compatibility and integration tests
-- [ ] Dependency lockfile, supply-chain review and production release gate
+- [ ] Complete supply-chain review, select an organization-owned package scope and approve the production release gate
 
 ## License
 
