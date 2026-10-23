@@ -1,19 +1,21 @@
-# Disposable native SPACE integration test (node02)
+# Disposable native SPACE integration test (the isolated SPACE test host)
 
 This is a **manual**, explicit test of the experimental native filesystem transport. It creates a **new real Firecracker VM**. It never points at an existing sandbox and never uses a real repository or company file.
 
 ## Preconditions
 
 - Node.js 24.11 or newer on the test runner, npm dependencies installed from the committed lockfile.
-- Test-runner network access to a private SPACE management API and data-plane URL on node02.
+- Test-runner network access to a private SPACE management API and data-plane URL on the isolated SPACE test host.
 - An **isolated/development** SPACE deployment, a disposable template such as `seed:latest`, and a scoped development token. Do not use a production administrator token.
 - Confirm your deployed SPACE version exposes the **Incubating** native `files:stat/list/read/write/mkdir/rename/remove` API endpoints. An older deployment may return 404. Never bypass this by enabling command-experimental mode with private files.
 - The user must actively opt in. Jenkins PR builds and normal npm tests must **never** automatically create VMs.
 
-## Run from a private shell on node02
+## Run from a private shell on the isolated SPACE test host
 
 ```bash
-git clone https://github.com/Snyxex/paperclip-space-provider.git
+# Set the repository clone URL privately before running this example.
+: "${REPOSITORY_URL:?Set the approved Git repository clone URL}"
+git clone "$REPOSITORY_URL"
 cd paperclip-space-provider
 # Test the exact PR #9 source while it is still under review:
 git fetch origin pull/9/head:integration-pr9

@@ -1,4 +1,5 @@
 // TEMPLATE ONLY. Copy to an admin-managed Jenkins job configuration.
+// Set RELEASE_REPOSITORY_URL and EXPECTED_NPM_PACKAGE only in trusted admin configuration.
 // Never run this via an untrusted PR branch Jenkinsfile or give PR jobs npm tokens.
 pipeline {
   agent { label 'npm-release' }
@@ -9,6 +10,8 @@ pipeline {
       steps { script {
         if (!(params.RELEASE_TAG ==~ /^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$/))
           error('Invalid release tag')
+        if (!env.RELEASE_REPOSITORY_URL || !env.EXPECTED_NPM_PACKAGE)
+          error('Administrator must configure RELEASE_REPOSITORY_URL and EXPECTED_NPM_PACKAGE')
       } }
     }
     stage('Operator approval') {
@@ -17,7 +20,7 @@ pipeline {
     stage('Checkout approved tag') {
       steps {
         deleteDir()
-        git branch:'main',url:'https://github.com/Snyxex/paperclip-space-provider.git'
+        git branch:'main',url:env.RELEASE_REPOSITORY_URL
         withEnv(["RELEASE_TAG=${params.RELEASE_TAG}"]) {
           sh '''
             set -eu
