@@ -1,6 +1,9 @@
 // Untrusted branch and PR CI only. NEVER bind npm credentials in this pipeline.
 pipeline {
   agent { label 'npm-ci' }
+  // Jenkins NodeJS plugin: Manage Jenkins > Tools > NodeJS installation 'NodeJS-24'.
+  // Auto-installs Node on the actual build agent and exposes node/npm on PATH.
+  tools { nodejs 'NodeJS-24' }
   options {
     disableConcurrentBuilds()
     timestamps()
