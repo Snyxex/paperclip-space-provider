@@ -32,6 +32,7 @@ pipeline {
         npm ci --ignore-scripts --no-audit --fund=false
       ''' }
     }
+    stage('Public source hygiene') { steps { sh 'npm run check:public' } }
     stage('Build') { steps { sh 'npm run build' } }
     stage('Protocol tests') { steps { sh 'npm test' } }
     stage('Plugin SDK smoke test') {
