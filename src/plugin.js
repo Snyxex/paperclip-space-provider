@@ -1,6 +1,7 @@
 import {definePlugin} from '@paperclipai/plugin-sdk';
 import {parseConfig, WORKSPACE} from './config.js';
 import {SpaceClient} from './space-client.js';
+import {assertAgentRuntimeReady} from './agent-runtime.js';
 import {syncFiles} from './workspace-sync.js';
 import {syncNativeFiles} from './native-workspace-sync.js';
 
@@ -30,6 +31,10 @@ const plugin = definePlugin({
     try {
       const c = client(params);
       id = await c.create();
+      if (c.config.runtimeProfile !== 'none') {
+        await c.ensureWorkspace(id);
+        await assertAgentRuntimeReady(c, id, c.config.runtimeProfile);
+      }
       const r = await c.exec(id, 'sh', ['-c', 'printf space-provider-ready']);
       if (r.exitCode !== 0 || r.stdout !== 'space-provider-ready') throw new Error('SPACE command test failed');
     } catch (e) {failed = e instanceof Error?e.message:'SPACE probe failed';}
@@ -46,6 +51,7 @@ const plugin = definePlugin({
     const id = await c.create();
     try {
       await c.ensureWorkspace(id);
+      await assertAgentRuntimeReady(c, id, c.config.runtimeProfile);
     } catch (cause) {
       // A sandbox ID is known: attempt to release it immediately instead of
       // leaving a resource running after a failed workspace initialization.
