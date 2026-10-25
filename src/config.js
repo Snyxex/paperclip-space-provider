@@ -41,6 +41,13 @@ export function parseConfig(raw) {
   if (!['disabled', 'command-experimental', 'native-incubating'].includes(transferMode)) {
     throw new Error('Invalid transferMode; use disabled, command-experimental or native-incubating');
   }
+  const probeScenario = raw.probeScenario ?? 'command';
+  if (!['command', 'node-file-test'].includes(probeScenario)) {
+    throw new Error('Invalid probeScenario; use command or node-file-test');
+  }
+  if (probeScenario === 'node-file-test' && (transferMode !== 'native-incubating' || runtimeProfile === 'none')) {
+    throw new Error('node-file-test requires transferMode native-incubating and runtimeProfile node-tooling or codex');
+  }
   const resources = {};
   for (const [key, lower, upper] of [['vcpu',1,4], ['memory_mib',256,8192], ['disk_mib',512,20480]]) {
     if (raw[key] !== undefined && raw[key] !== null) {
@@ -50,7 +57,7 @@ export function parseConfig(raw) {
     }
   }
   if (raw.reuseLease === true) throw new Error('reuseLease is not yet supported in v0.1-alpha');
-  return {apiUrl, dataPlaneUrl, token, template, timeoutMs, resources, allowInsecurePrivateHttp, transferMode, runtimeProfile};
+  return {apiUrl, dataPlaneUrl, token, template, timeoutMs, resources, allowInsecurePrivateHttp, transferMode, runtimeProfile, probeScenario};
 }
 
 export function identifier(value, prefix) {
