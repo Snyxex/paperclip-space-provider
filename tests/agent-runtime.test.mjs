@@ -42,12 +42,12 @@ test('codex profile checks CLI and fails with bounded dependency diagnostic', as
 
 test('reject unexpected or spoofed marker on a failed command', async () => {
   const client = fakeClient(1, 'paperclip-space-runtime-ready:codex');
-  await assert.rejects(assertAgentRuntimeReady(client, 'sbx_test', 'codex'), /check failed \\(exit 1\\)/);
+  await assert.rejects(assertAgentRuntimeReady(client, 'sbx_test', 'codex'), /check failed \(exit 1\)/);
 });
 
 test('reject a false success that lacks the expected marker', async () => {
   const client = fakeClient(0, 'some unrelated output');
-  await assert.rejects(assertAgentRuntimeReady(client, 'sbx_test', 'node-tooling'), /check failed \\(exit 0\\)/);
+  await assert.rejects(assertAgentRuntimeReady(client, 'sbx_test', 'node-tooling'), /check failed \(exit 0\)/);
 });
 
 test('reject invalid runtime profiles before starting any command', async () => {
