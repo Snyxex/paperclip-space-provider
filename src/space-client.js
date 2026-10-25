@@ -123,7 +123,10 @@ export class SpaceClient {
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || typeof value !== 'string') throw new Error('Invalid environment variable');
       return `${key}=${shellQuote(value)}`;
     });
-    const script = `exec env ${assignments.join(' ')} ${[command, ...args].map(shellQuote).join(' ')}`;
+    // Use POSIX shell exports rather than assuming the guest contains `env`.
+    const exports = assignments.map(x => `export ${x}`).join('; ');
+    const invocation = `exec ${[command, ...args].map(shellQuote).join(' ')}`;
+    const script = exports ? `${exports}; ${invocation}` : invocation;
     const cwd = options.cwd;
     if (cwd !== undefined && (typeof cwd !== 'string' || !cwd.startsWith('/') || cwd.includes('\0'))) throw new Error('Invalid sandbox working directory');
     const payload = {command: ['sh', '-c', script], timeout: `${Math.ceil(timeoutMs/1000)}s`, ...(cwd ? {cwd} : {})};
@@ -146,7 +149,14 @@ export class SpaceClient {
   }
   async ensureWorkspace(id) {
     const r = await this.exec(id, 'mkdir', ['-p', WORKSPACE]);
-    if (r.exitCode !== 0) throw new SpaceError('Could not prepare sandbox workspace');
+    if (r.exitCode !== 0) {
+      // This command has fixed arguments and no secrets. Surface bounded guest
+      // stderr so missing executables and read-only filesystems are actionable.
+      const detail = typeof r.stderr === 'string'
+        ? r.stderr.replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, 240) : '';
+      const exit = Number.isInteger(r.exitCode) ? `exit ${r.exitCode}` : 'unknown exit status';
+      throw new SpaceError(`Could not prepare sandbox workspace (${exit}${detail ? `: ${detail}` : ''})`);
+    }
     return WORKSPACE;
   }
 }
