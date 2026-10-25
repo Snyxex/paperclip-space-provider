@@ -49,6 +49,9 @@ if (!Array.isArray(manifest.environmentDrivers)) throw new Error('Environment dr
 NODE
       ''' }
     }
+    stage('Paperclip host package preflight (offline)') {
+      steps { sh 'npm run check:paperclip-host' }
+    }
     stage('Rootless Podman isolation tests (trusted main only)') {
       when { branch 'main' }
       // Reuse the pipeline's current npm-ci executor. Nested agents would
