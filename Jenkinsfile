@@ -49,6 +49,14 @@ if (!Array.isArray(manifest.environmentDrivers)) throw new Error('Environment dr
 NODE
       ''' }
     }
+    stage('Rootless Podman isolation tests (trusted main only)') {
+      when { branch 'main' }
+      agent { label 'podman-test' }
+      steps {
+        checkout scm
+        sh 'bash ci/docker-test.sh'
+      }
+    }
     stage('Dependency audit') {
       steps { sh 'npm audit --omit=dev --audit-level=high' }
     }
