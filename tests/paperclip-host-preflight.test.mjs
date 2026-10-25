@@ -22,7 +22,7 @@ const hooks=[
   'onEnvironmentDestroyLease','onEnvironmentRealizeWorkspace',
   'onEnvironmentExecute','onEnvironmentSyncIn','onEnvironmentSyncOut'
 ];
-const plugin=Object.fromEntries(hooks.map(name=>[name,()=>{}]));
+const plugin={definition:Object.fromEntries(hooks.map(name=>[name,()=>{}]))};
 const schema={openapi:'3.1.0',info:{version:'0.8.0'},paths:{
   '/sandboxes':{post:{}},
   '/sandboxes/{sandbox_id}':{delete:{}},
@@ -34,9 +34,10 @@ test('Paperclip host package verifies manifest, driver and worker hooks',()=>{
  const r=verifyBundle(pkg,manifest,plugin);
  assert.equal(r.driverKey,'space');
  assert.equal(r.pluginId,manifest.id);
- assert.throws(()=>verifyBundle(pkg,manifest,{...plugin,onEnvironmentExecute:null}),/onEnvironmentExecute/);
+ assert.throws(()=>verifyBundle(pkg,manifest,{definition:{...plugin.definition,onEnvironmentExecute:null}}),/onEnvironmentExecute/);
  assert.throws(()=>verifyBundle(pkg,{...manifest,environmentDrivers:[]},plugin),/driver/);
  assert.throws(()=>verifyBundle({...pkg,private:false},manifest,plugin),/package metadata/);
+ assert.throws(()=>verifyBundle(pkg,manifest,plugin.definition),/onEnvironmentValidateConfig/);
 });
 
 test('Paperclip worker URL validation permits loopback and rejects public HTTP',()=>{
