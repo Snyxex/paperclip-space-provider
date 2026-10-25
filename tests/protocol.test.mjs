@@ -59,3 +59,34 @@ test('unknown POST outcomes are not retried automatically',async()=>{
  let attempts=0;const c=new SpaceClient(settings,async()=>{attempts++;throw new Error('network failure')});
  await assert.rejects(c.create(),/request failed or timed out/);assert.equal(attempts,1);
 });
+
+
+test('guest execution does not require an external env binary',async()=>{
+ const requests=[];
+ const fetchMock=async(url,opts)=>{
+   const pathname=new URL(url).pathname;
+   if(pathname.endsWith('/commands')) {
+     requests.push(JSON.parse(opts.body));
+     return json({session_id:'proc_test',attach:{events_url:'/v1/sessions/proc_test/events',token:'stream-token'}});
+   }
+   if(pathname.endsWith('/events')) return sse(['data: {"type":"process_exited","exit_code":0}\n\n']);
+   throw new Error('Unexpected request: '+pathname);
+ };
+ const client=new SpaceClient(settings,fetchMock);
+ await client.exec('sbx_test','mkdir',['-p','/paperclip-workspace']);
+ assert.equal(requests[0].command[2],"exec 'mkdir' '-p' '/paperclip-workspace'");
+ await client.exec('sbx_test','printf',['ok'],{env:{GREETING:"it's fine"}});
+ assert.equal(requests[1].command[2],"export GREETING='it'"+'"'+"'"+'"'+"s fine'; exec 'printf' 'ok'");
+});
+
+test('workspace mkdir failures show bounded guest stderr and exit status',async()=>{
+ const client=new SpaceClient(settings);
+ client.exec=async()=>({exitCode:1,stderr:'mkdir: cannot create directory /paperclip-workspace: Permission denied\n'});
+ await assert.rejects(client.ensureWorkspace('sbx_test'),/exit 1: mkdir: cannot create directory \/paperclip-workspace: Permission denied/);
+ client.exec=async()=>({exitCode:127,stderr:'x'.repeat(500)});
+ await assert.rejects(client.ensureWorkspace('sbx_test'),error=>{
+   assert.equal(error.name,'SpaceError');
+   assert.ok(error.message.length<350);
+   return true;
+ });
+});
