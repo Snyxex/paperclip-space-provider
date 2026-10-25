@@ -44,8 +44,18 @@ const plugin = definePlugin({
     if (params.requestedExpiresAt) throw new Error('SPACE alpha cannot guarantee lease expiration');
     const c = client(params);
     const id = await c.create();
-    try {await c.ensureWorkspace(id);} catch {
-      throw new Error(`Sandbox ${id} exists but workspace preparation failed; cleanup required`);
+    try {
+      await c.ensureWorkspace(id);
+    } catch (cause) {
+      // A sandbox ID is known: attempt to release it immediately instead of
+      // leaving a resource running after a failed workspace initialization.
+      // Do not hide uncertain deletion outcomes; operators must reconcile them.
+      try {
+        await c.destroy(id);
+      } catch {
+        throw new Error(`Sandbox ${id} workspace preparation failed; cleanup unconfirmed. Inspect SPACE and reconcile manually.`, {cause});
+      }
+      throw new Error(`Sandbox ${id} workspace preparation failed; sandbox was deleted.`, {cause});
     }
     return {providerLeaseId:id, metadata:metadata(id,params)};
   },
