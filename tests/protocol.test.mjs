@@ -90,3 +90,21 @@ test('workspace mkdir failures show bounded guest stderr and exit status',async(
    return true;
  });
 });
+
+test('workspace bootstrap is confined to a fixed guest path and standard seed user',async()=>{
+ const client=new SpaceClient(settings);
+ let observed;
+ client.exec=async(id, command, args)=>{
+   assert.equal(id,'sbx_test');
+   assert.equal(command,'sh');
+   assert.equal(args[0],'-c');
+   observed=args[1];
+   return {exitCode:0,stderr:''};
+ };
+ assert.equal(await client.ensureWorkspace('sbx_test'),'/paperclip-workspace');
+ assert.match(observed,/if \[ -L '\/paperclip-workspace' \]/);
+ assert.match(observed,/\[ "\$\(id -u\)" != "2000" \]/);
+ assert.match(observed,/sudo -n install -d -m 0700 -o user -g user -- '\/paperclip-workspace'/);
+ assert.match(observed,/\[ ! -w '\/paperclip-workspace' \]/);
+ assert.doesNotMatch(observed,/chmod 777|chown -R/);
+});
