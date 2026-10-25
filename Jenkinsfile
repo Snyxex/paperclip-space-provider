@@ -51,9 +51,9 @@ NODE
     }
     stage('Rootless Podman isolation tests (trusted main only)') {
       when { branch 'main' }
-      agent { label 'podman-test' }
+      // Reuse the pipeline's current npm-ci executor. Nested agents would
+      // deadlock on a one-executor worker carrying both labels.
       steps {
-        checkout scm
         sh 'bash ci/docker-test.sh'
       }
     }
