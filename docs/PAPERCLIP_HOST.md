@@ -2,8 +2,9 @@
 
 A disposable Firecracker VM round-trip was verified against SPACE 0.8.0 on
 node02: create, stdout and nonzero command exits, native file/directory
-transfers with checksums, and confirmed deletion. This does **not** prove that
-Paperclip can install the plugin, resolve a company secret, or run agents.
+transfers with checksums, and confirmed deletion. The local Paperclip instance on node02 subsequently installed this alpha and
+passed a user-triggered provider probe (create, execute, delete) with no
+remaining sandboxes. This does **not** prove full Codex agent execution.
 
 This is a development-only alpha. Use a separate Paperclip test instance, a
 scoped SPACE token, and synthetic data. Never use production repositories.
@@ -122,10 +123,12 @@ It creates/executes/deletes a **real disposable VM**. Confirm deletion
 in SPACE, especially on timeout or failure; do not blindly retry
 uncertain mutations.
 
-Then execute a synthetic test job through Paperclip and check
-acquire → realize workspace → execute → release. Keep transfers
-disabled initially, enabling native-incubating only for artificial
-files on an isolated environment. A full Codex or Claude agent job
+For the optional **Paperclip-driven synthetic Node test**, enable a dedicated
+test environment as documented in [AGENT_RUNTIME.md](AGENT_RUNTIME.md).
+It performs a fixed native-file upload, read-back and Node.js test inside a
+throwaway SPACE VM. Keep transfers disabled for all other environments.
+The new functionality still requires a live qualification on node02 before
+using the provider for an agent job. A full Codex or Claude agent job
 also needs a compatible SPACE guest with its CLI/runtime installed:
 seed:latest is intentionally a minimal smoke image.
 
