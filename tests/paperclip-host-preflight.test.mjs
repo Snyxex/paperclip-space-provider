@@ -51,7 +51,7 @@ test('Paperclip worker URL validation permits loopback and rejects public HTTP',
  }),/HTTPS/);
  assert.throws(()=>getOrigins({}),/required/);
  assert.throws(()=>getOrigins({
-   SPACE_API_URL:'http://100.72.14.57:18080',
+   SPACE_API_URL:'http://100.64.0.1:18080',
    SPACE_DATA_PLANE_URL:'https://data.example.invalid',
    SPACE_ALLOW_INSECURE_PRIVATE_HTTP:'true'
  }),/HTTPS/);
