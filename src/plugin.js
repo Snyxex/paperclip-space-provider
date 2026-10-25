@@ -2,6 +2,7 @@ import {definePlugin} from '@paperclipai/plugin-sdk';
 import {parseConfig, WORKSPACE} from './config.js';
 import {SpaceClient} from './space-client.js';
 import {assertAgentRuntimeReady} from './agent-runtime.js';
+import {runSyntheticNodeTest} from './agent-smoke.js';
 import {syncFiles} from './workspace-sync.js';
 import {syncNativeFiles} from './native-workspace-sync.js';
 
@@ -27,23 +28,31 @@ const plugin = definePlugin({
     } catch (e) {return {ok:false, errors:[e instanceof Error?e.message:'Invalid configuration']};}
   },
   async onEnvironmentProbe(params) {
-    let id = null; let failed = null;
+    let id = null; let failed = null; let scenario = 'command';
     try {
       const c = client(params);
+      scenario = c.config.probeScenario;
       id = await c.create();
       if (c.config.runtimeProfile !== 'none') {
         await c.ensureWorkspace(id);
         await assertAgentRuntimeReady(c, id, c.config.runtimeProfile);
       }
-      const r = await c.exec(id, 'sh', ['-c', 'printf space-provider-ready']);
-      if (r.exitCode !== 0 || r.stdout !== 'space-provider-ready') throw new Error('SPACE command test failed');
+      if (scenario === 'node-file-test') {
+        await runSyntheticNodeTest(c, id);
+      } else {
+        const r = await c.exec(id, 'sh', ['-c', 'printf space-provider-ready']);
+        if (r.exitCode !== 0 || r.stdout !== 'space-provider-ready') throw new Error('SPACE command test failed');
+      }
     } catch (e) {failed = e instanceof Error?e.message:'SPACE probe failed';}
     finally {
       if (id) {
         try {await client(params).destroy(id);} catch {failed = `SPACE probe cleanup unconfirmed for ${id}; inspect manually`;}
       }
     }
-    return failed ? {ok:false, summary:failed} : {ok:true, summary:'SPACE created, executed, and deleted a Firecracker sandbox'};
+    return failed ? {ok:false, summary:failed} :
+      {ok:true, summary:scenario === 'node-file-test'
+        ? 'SPACE created a Firecracker sandbox, transferred and ran a synthetic Node test, and deleted it'
+        : 'SPACE created, executed, and deleted a Firecracker sandbox'};
   },
   async onEnvironmentAcquireLease(params) {
     if (params.requestedExpiresAt) throw new Error('SPACE alpha cannot guarantee lease expiration');
