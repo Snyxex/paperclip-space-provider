@@ -11,6 +11,8 @@ Community-maintained integration between [Paperclip AI](https://github.com/paper
 - Paperclip plugin manifest, worker, and sandbox-provider hooks
 - SPACE sandbox create/inspect/delete and readiness polling
 - Command execution with bounded timeouts and command-stream attachment
+- Opt-in Node tooling / Codex CLI presence checks on newly acquired Firecracker VMs (no agent-auth verification)
+- Optional Paperclip-driven synthetic Node test: native guest upload, exact read-back, node --test execution, and VM deletion
 - SSE stdout/stderr decoding with separate short-lived stream token
 - No blind replay of mutations if the outcome is unknown
 - Configurable API/data-plane endpoints, no server-specific URLs
@@ -25,9 +27,9 @@ Safety limits: only files inside `workspace.localPath` and `/paperclip-workspace
 
 SPACE's newer public API includes **incubating native filesystem endpoints** (POST `files:stat/list/read/write/mkdir/rename/remove`). The new `transferMode: native-incubating` option supports bounded regular-file and recursive-directory mappings with an authenticated SPACE management API. Uploads use JSON base64 file bodies (not shell commands); downloads stream binary `application/octet-stream`. It performs lexical path confinement, local symlink/hardlink checks, guest stat checks, guest staging and rename, and temporary host downloads. Files are limited to 16 MiB each, requests to 64 MiB/512 files, and recursion to 24 levels. Exclude globs are supported; post-upload commands and symlink following are not yet supported.
 
-**This mode remains preproduction:** the SPACE file APIs are marked *Incubating*. A disposable sandbox round-trip with artificial files succeeded against SPACE 0.8.0 on node02 on 2026-10-25, but this is not general version qualification. Concurrent filesystem mutation remains a potential TOCTOU risk, and real Paperclip host integration has not been tested. Partial directory operations are not transactional. Do not use untrusted tenant repositories or production credentials yet. See [Native sync security and integration checklist](docs/NATIVE_SYNC.md). The [manual disposable-VM integration test](docs/INTEGRATION.md) validates the experimental native SPACE API with synthetic files and actual command execution, but is never run automatically during CI.
+**This mode remains preproduction:** the SPACE file APIs are marked *Incubating*. A disposable sandbox round-trip with artificial files succeeded against SPACE 0.8.0 on node02 on 2026-10-25, but this is not general version qualification. Concurrent filesystem mutation remains a potential TOCTOU risk, and the existing Paperclip host probe succeeded on node02, but the new Node-file probe and real agent runs remain unverified. Partial directory operations are not transactional. Do not use untrusted tenant repositories or production credentials yet. See [Native sync security and integration checklist](docs/NATIVE_SYNC.md). The [manual disposable-VM integration test](docs/INTEGRATION.md) validates the experimental native SPACE API with synthetic files and actual command execution, but is never run automatically during CI.
 
-For all normal deployments, leave `transferMode: disabled`. Never set `command-experimental` with credentials or private data.
+For all normal deployments, leave `transferMode: disabled`. Never set `command-experimental` with credentials or private data. To exercise synthetic Node file transfers from **Paperclip itself** in an isolated environment, follow [Agent-runtime and Node-file smoke-test instructions](docs/AGENT_RUNTIME.md). The maintained SPACE `code-runtime` template contains Node.js and development tools, but Codex CLI must still be prepared and separately qualified.
 
 ## Requirements
 
@@ -50,6 +52,8 @@ Install an approved version through Paperclip's **Settings → Plugins**, then s
 | `timeoutMs` | Request deadline, default 300000 |
 | `allowInsecurePrivateHttp` | Explicit opt-in for single-host private RFC1918 IPv4 HTTP connections |
 | `reuseLease` | Must remain `false` for this alpha |
+| `runtimeProfile` | `none` (default), `node-tooling` or `codex` opt-in readiness gate |
+| `probeScenario` | `command` (default) or `node-file-test` (requires `native-incubating` and runtime profile) |
 | `transferMode` | `disabled` (default), `native-incubating` (native SPACE API, preproduction), or `command-experimental` (unsafe shell-payload POC) |
 
 Use HTTPS for network-separated deployments. Do not expose SPACE Kind development credentials or ports publicly, and do not put the management bearer token inside a sandbox.
@@ -89,6 +93,7 @@ See [Release instructions](docs/RELEASING.md), [Security policy](SECURITY.md), a
 - [ ] Full production qualification: adversarial filesystem/TOCTOU review, real SPACE Firecracker VM and Paperclip host integration, cancellation and failure recovery
 - [ ] Stdin transfer, process cancellation, cleanup/reconciliation after unknown outcomes
 - [ ] Lease ownership, resource isolation, cleanup and recovery
+- [x] Opt-in runtime prerequisite checks and synthetic Node-file test implementation (host/VM qualification pending)
 - [ ] Codex-capable Firecracker template
 - [ ] Verified current Paperclip SDK/plugin-host compatibility and integration tests
 - [ ] Complete supply-chain review, select an organization-owned package scope and approve the production release gate

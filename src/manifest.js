@@ -23,6 +23,8 @@ const manifest = {
       memory_mib: {type:'integer', minimum:256, maximum:8192},
       disk_mib: {type:'integer', minimum:512, maximum:20480},
       reuseLease: {type:'boolean', default:false, description:'Not yet supported in this alpha.'},
+      runtimeProfile: {type:'string', enum:['none','node-tooling','codex'], default:'none', description:'Opt-in disposable-VM readiness check for Node tooling or Codex CLI. Does not validate agent authentication.'},
+      probeScenario: {type:'string', enum:['command','node-file-test'], default:'command', description:'node-file-test checks a synthetic file round-trip and a Node test. Requires native-incubating transfer and a runtimeProfile.'},
       transferMode: {type:'string', enum:['disabled','command-experimental','native-incubating'], default:'disabled', description:'Disabled by default. native-incubating uses SPACE native filesystem endpoints (experimental; needs real VM validation). command-experimental sends base64 in command requests; never use with secrets.'}
     }}
   }]
