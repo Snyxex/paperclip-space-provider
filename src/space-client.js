@@ -170,7 +170,7 @@ fi`;
     const r = await this.exec(id, 'sh', ['-c', script]);
     if (r.exitCode !== 0) {
       const detail = typeof r.stderr === 'string'
-        ? r.stderr.replace(/[\\x00-\\x1f\\x7f]/g, ' ').trim().slice(0, 240) : '';
+        ? r.stderr.replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, 240) : '';
       const exit = Number.isInteger(r.exitCode) ? `exit ${r.exitCode}` : 'unknown exit status';
       throw new SpaceError(`Could not prepare sandbox workspace (${exit}${detail ? `: ${detail}` : ''})`);
     }
