@@ -56,3 +56,25 @@ test('reject invalid runtime profiles before starting any command', async () => 
   assert.deepEqual(client.calls, []);
   assert.deepEqual(RUNTIME_PROFILES, ['none','node-tooling','codex']);
 });
+
+import {parseConfig} from '../src/config.js';
+
+test('runtime and file smoke choices are strict and opt-in', () => {
+  const base = {
+    apiUrl:'http://172.20.0.1:18080',
+    dataPlaneUrl:'http://172.20.0.1:18090',
+    allowInsecurePrivateHttp:true,
+    apiToken:'unit-test-only',
+  };
+  const defaults = parseConfig(base);
+  assert.equal(defaults.runtimeProfile, 'none');
+  assert.equal(defaults.probeScenario, 'command');
+
+  const node = parseConfig({...base, runtimeProfile:'node-tooling', transferMode:'native-incubating', probeScenario:'node-file-test'});
+  assert.equal(node.runtimeProfile, 'node-tooling');
+  assert.equal(node.probeScenario, 'node-file-test');
+  assert.throws(() => parseConfig({...base, runtimeProfile:'unknown'}), /Invalid runtimeProfile/);
+  assert.throws(() => parseConfig({...base, probeScenario:'unsafe'}), /Invalid probeScenario/);
+  assert.throws(() => parseConfig({...base, probeScenario:'node-file-test', runtimeProfile:'node-tooling'}), /requires transferMode native-incubating/);
+  assert.throws(() => parseConfig({...base, probeScenario:'node-file-test', transferMode:'native-incubating'}), /requires transferMode native-incubating/);
+});
