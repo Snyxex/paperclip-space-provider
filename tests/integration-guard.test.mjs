@@ -25,7 +25,7 @@ test('VM integration test refuses Jenkins by default',async()=>{
     SPACE_API_TOKEN:'dummy',
     CI:'true'
   };
-  await assert.rejects(run(env,{SpaceClientClass:MockClient}),/Refusing an automatic Jenkins/);
+  await assert.rejects(run(env,{SpaceClientClass:MockClient}),/Refusing any CI\/Jenkins/);
   assert.equal(created,0);
 });
 
