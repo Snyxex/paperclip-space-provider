@@ -25,13 +25,17 @@ Safety limits: only files inside `workspace.localPath` and `/paperclip-workspace
 
 SPACE's newer public API includes **incubating native filesystem endpoints** (POST `files:stat/list/read/write/mkdir/rename/remove`). The new `transferMode: native-incubating` option supports bounded regular-file and recursive-directory mappings with an authenticated SPACE management API. Uploads use JSON base64 file bodies (not shell commands); downloads stream binary `application/octet-stream`. It performs lexical path confinement, local symlink/hardlink checks, guest stat checks, guest staging and rename, and temporary host downloads. Files are limited to 16 MiB each, requests to 64 MiB/512 files, and recursion to 24 levels. Exclude globs are supported; post-upload commands and symlink following are not yet supported.
 
-**This mode remains preproduction:** the SPACE file APIs are marked *Incubating*, the deployed SPACE version in the integration environment is unverified, concurrent filesystem mutation remains a potential TOCTOU risk, and real Paperclip host integration has not been tested. Partial directory operations are not transactional. Do not use untrusted tenant repositories or production credentials yet. See [Native sync security and integration checklist](docs/NATIVE_SYNC.md). The [manual disposable-VM integration test](docs/INTEGRATION.md) validates the experimental native SPACE API with synthetic files and actual command execution, but is never run automatically during CI.
+**This mode remains preproduction:** the SPACE file APIs are marked *Incubating*. A disposable sandbox round-trip with artificial files succeeded against SPACE 0.8.0 on node02 on 2026-10-25, but this is not general version qualification. Concurrent filesystem mutation remains a potential TOCTOU risk, and real Paperclip host integration has not been tested. Partial directory operations are not transactional. Do not use untrusted tenant repositories or production credentials yet. See [Native sync security and integration checklist](docs/NATIVE_SYNC.md). The [manual disposable-VM integration test](docs/INTEGRATION.md) validates the experimental native SPACE API with synthetic files and actual command execution, but is never run automatically during CI.
 
 For all normal deployments, leave `transferMode: disabled`. Never set `command-experimental` with credentials or private data.
 
 ## Requirements
 
 Node.js 24.11+ for the eventual Paperclip worker, a compatible Paperclip plugin host and self-hosted SPACE cluster. The built-in SPACE `seed:latest` template is for smoke testing; agent execution requires a prepared VM image with Node.js, shell, tar, and the selected agent CLI.
+
+## Paperclip host installation preflight
+
+For a self-hosted test Paperclip instance, follow [Paperclip host integration and private SPACE networking](docs/PAPERCLIP_HOST.md). After building, `npm run check:paperclip-host` validates the plugin bundle locally without creating a VM or accessing credentials. From the actual Paperclip worker's network namespace, `node scripts/paperclip-host-preflight.mjs --connectivity` additionally checks SPACE OpenAPI and data-plane reachability without authentication. These checks do not replace a real host plugin-worker/secret-resolution test.
 
 ## Environment configuration
 
