@@ -37,6 +37,7 @@
     "typecheck": "node scripts/build.mjs --verify-only",
     "pack:check": "npm pack --dry-run",
     "check:public": "node scripts/check-public.mjs",
-    "test:space:integration": "node examples/native-sync-integration.mjs"
+    "test:space:integration": "node examples/native-sync-integration.mjs",
+    "check:paperclip-host": "node scripts/paperclip-host-preflight.mjs"
   }
 }
