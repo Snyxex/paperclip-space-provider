@@ -148,12 +148,29 @@ export class SpaceClient {
     return readCommandEvents(response, log);
   }
   async ensureWorkspace(id) {
-    const r = await this.exec(id, 'mkdir', ['-p', WORKSPACE]);
+    // The published SPACE seed guest runs as 'user' (UID 2000) and cannot
+    // write under '/'. Bootstrap just this fixed path inside the disposable VM.
+    // Custom templates with an existing writable directory need no sudo.
+    const script = `set -eu
+if [ -L '${WORKSPACE}' ]; then
+  echo 'Refusing symlink workspace' >&2; exit 1
+fi
+if [ ! -d '${WORKSPACE}' ]; then
+  if [ -e '${WORKSPACE}' ]; then
+    echo 'Workspace path exists but is not a directory' >&2; exit 1
+  fi
+  if [ "$(id -u)" != "2000" ] || [ "$(id -un)" != "user" ]; then
+    echo 'Workspace bootstrap requires the standard SPACE seed user' >&2; exit 1
+  fi
+  sudo -n install -d -m 0700 -o user -g user -- '${WORKSPACE}'
+fi
+if [ ! -w '${WORKSPACE}' ] || [ ! -x '${WORKSPACE}' ]; then
+  echo 'Workspace is not writable by the guest user' >&2; exit 1
+fi`;
+    const r = await this.exec(id, 'sh', ['-c', script]);
     if (r.exitCode !== 0) {
-      // This command has fixed arguments and no secrets. Surface bounded guest
-      // stderr so missing executables and read-only filesystems are actionable.
       const detail = typeof r.stderr === 'string'
-        ? r.stderr.replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, 240) : '';
+        ? r.stderr.replace(/[\\x00-\\x1f\\x7f]/g, ' ').trim().slice(0, 240) : '';
       const exit = Number.isInteger(r.exitCode) ? `exit ${r.exitCode}` : 'unknown exit status';
       throw new SpaceError(`Could not prepare sandbox workspace (${exit}${detail ? `: ${detail}` : ''})`);
     }
