@@ -33,6 +33,10 @@ export function parseConfig(raw) {
   }
   const timeoutMs = Number(raw.timeoutMs ?? 300_000);
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 3_600_000) throw new Error('timeoutMs must be 1000..3600000');
+  const runtimeProfile = raw.runtimeProfile ?? 'none';
+  if (!['none', 'node-tooling', 'codex'].includes(runtimeProfile)) {
+    throw new Error('Invalid runtimeProfile; use none, node-tooling or codex');
+  }
   const transferMode = raw.transferMode ?? 'disabled';
   if (!['disabled', 'command-experimental', 'native-incubating'].includes(transferMode)) {
     throw new Error('Invalid transferMode; use disabled, command-experimental or native-incubating');
@@ -46,7 +50,7 @@ export function parseConfig(raw) {
     }
   }
   if (raw.reuseLease === true) throw new Error('reuseLease is not yet supported in v0.1-alpha');
-  return {apiUrl, dataPlaneUrl, token, template, timeoutMs, resources, allowInsecurePrivateHttp, transferMode};
+  return {apiUrl, dataPlaneUrl, token, template, timeoutMs, resources, allowInsecurePrivateHttp, transferMode, runtimeProfile};
 }
 
 export function identifier(value, prefix) {
