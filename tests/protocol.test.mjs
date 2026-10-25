@@ -83,6 +83,12 @@ test('workspace mkdir failures show bounded guest stderr and exit status',async(
  const client=new SpaceClient(settings);
  client.exec=async()=>({exitCode:1,stderr:'mkdir: cannot create directory /paperclip-workspace: Permission denied\n'});
  await assert.rejects(client.ensureWorkspace('sbx_test'),/exit 1: mkdir: cannot create directory \/paperclip-workspace: Permission denied/);
+ client.exec=async()=>({exitCode:13,stderr:'\u0000Permission denied: workspace path\u007f\n'});
+ await assert.rejects(client.ensureWorkspace('sbx_test'),error=>{
+   assert.match(error.message,/exit 13: Permission denied: workspace path/);
+   assert.doesNotMatch(error.message,/[\x00-\x1f\x7f]/);
+   return true;
+ });
  client.exec=async()=>({exitCode:127,stderr:'x'.repeat(500)});
  await assert.rejects(client.ensureWorkspace('sbx_test'),error=>{
    assert.equal(error.name,'SpaceError');
