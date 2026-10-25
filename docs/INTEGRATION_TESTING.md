@@ -43,3 +43,10 @@ bash ci/docker-test.sh
 This requires a working rootless Podman installation. The build downloads npm dependencies,
 runs tests during image creation and reruns tests in a network-disabled,
 read-only container. It does not require a SPACE token or server.
+
+## Manual live SPACE test
+
+The opt-in integration runner is documented in [INTEGRATION.md](INTEGRATION.md).
+It tests real create/execute/read/write/delete against a disposable Firecracker VM
+with synthetic data. It deliberately refuses execution from Jenkins or other CI.
+Do not interpret the rootless Podman CI test as a successful live SPACE test.
