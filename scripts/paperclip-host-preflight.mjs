@@ -35,8 +35,10 @@ export function verifyBundle(pkg, manifest, plugin) {
     if(!drivers[0].configSchema?.required?.includes(key))
       throw new Error('Missing mandatory SPACE environment config field: '+key);
   }
+  // Paperclip SDK definePlugin() returns {definition}, not the hooks
+  // directly on the exported sealed object.
   for(const name of requiredHooks) {
-    if(typeof plugin?.[name]!=='function')
+    if(typeof plugin?.definition?.[name]!=='function')
       throw new Error('Missing SPACE worker lifecycle hook: '+name);
   }
   return {pluginId:manifest.id,version:manifest.version,driverKey:'space'};
