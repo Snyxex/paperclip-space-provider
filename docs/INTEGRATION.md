@@ -89,3 +89,23 @@ prove the Paperclip worker handshake. After the disposable VM test passes:
 If plugin configuration expects a resolved token but receives a secret reference,
 stop and correct integration with the matching Paperclip SDK/host contract.
 Do not work around this by pasting a production token into a stored config.
+
+## The seed guest and /paperclip-workspace
+
+The published SPACE seed image runs commands as the unprivileged `user`
+(UID 2000). Although `/home/user/workspace` exists, the Paperclip plugin
+contract currently uses `/paperclip-workspace`. Fresh seed guests cannot
+create a directory directly under `/` without elevation.
+
+`SpaceClient.ensureWorkspace()` verifies that the guest target is not a symlink,
+checks for the exact seed user identity before any privileged initialization,
+and uses the seed image's passwordless `sudo -n install -d` **only inside the
+temporary Firecracker VM** to create that fixed path with mode 0700 and owner
+`user:user`. Subsequent plugin jobs run as the unprivileged guest user.
+
+Custom/production templates should instead pre-provision a private, writable
+`/paperclip-workspace` owned by their normal execution user at template build
+time. Such templates do not require or use the sudo bootstrap. If the guest
+does not match the standard seed identity and does not already provide a
+writable workspace, initialization fails closed. Never `chmod 777 /`, and
+never use host-side `sudo` or a host bind mount to work around this failure.
