@@ -76,7 +76,7 @@ test('guest execution does not require an external env binary',async()=>{
  await client.exec('sbx_test','mkdir',['-p','/paperclip-workspace']);
  assert.equal(requests[0].command[2],"exec 'mkdir' '-p' '/paperclip-workspace'");
  await client.exec('sbx_test','printf',['ok'],{env:{GREETING:"it's fine"}});
- assert.equal(requests[1].command[2],"export GREETING='it'"+'"'+"'"+'"'+"s fine'; exec 'printf' 'ok'");
+ assert.equal(requests[1].command[2],`export GREETING=${shellQuote("it's fine")}; exec 'printf' 'ok'`);
 });
 
 test('workspace mkdir failures show bounded guest stderr and exit status',async()=>{
