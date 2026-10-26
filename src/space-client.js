@@ -96,13 +96,25 @@ export class SpaceClient {
     // Do not blindly retry POST: an unknown response may have created the VM.
     const created = await this.api('/v1/sandboxes', {method: 'POST', body, key: randomUUID()});
     const sandboxId = identifier(created.sandbox_id, 'sbx_');
-    const operationId = identifier(created.operation_id, 'op_');
     try {
+      const operationId = identifier(created.operation_id, 'op_');
       await this.wait(`/v1/operations/${operationId}`, 'succeeded');
       await this.wait(`/v1/sandboxes/${sandboxId}`, 'running');
       const processes = await this.api(`/v1/sandboxes/${sandboxId}/processes?limit=1`);
       if (!Array.isArray(processes.data)) throw new SpaceError('Sandbox readiness response is invalid');
-    } catch (err) {throw new SpaceError(`Sandbox ${sandboxId} created but readiness is uncertain; inspect and manually clean up. ${err.message}`);}
+    } catch (err) {
+      // SPACE returned an owned sandbox ID. Best-effort delete exactly this
+      // instance before returning a failure. Never re-send the create request:
+      // its outcome is already known enough to need reconciliation.
+      // A failed delete is NOT proof that the VM is gone.
+      const reason = err instanceof Error ? err.message.slice(0, 240) : 'Unknown readiness failure';
+      try {
+        await this.destroy(sandboxId);
+      } catch {
+        throw new SpaceError(`Sandbox ${sandboxId} readiness failed; cleanup unconfirmed. Inspect and reconcile this sandbox before retrying. Cause: ${reason}`);
+      }
+      throw new SpaceError(`Sandbox ${sandboxId} readiness failed; deletion confirmed. Cause: ${reason}`);
+    }
     return sandboxId;
   }
   async inspect(id) {return this.api(`/v1/sandboxes/${identifier(id, 'sbx_')}`);}
