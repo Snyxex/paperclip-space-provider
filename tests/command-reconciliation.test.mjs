@@ -118,3 +118,27 @@ test('stream transport exception is reconciled instead of automatically replayin
   assert.equal(calls.filter(c=>c.path.endsWith('/commands')).length,1);
   assert.equal(calls.filter(c=>c.path.endsWith(':kill')).length,1);
 });
+
+test('an incorrect process identity returned by SPACE must not prove termination',async()=>{
+  const calls=[];
+  const client=new SpaceClient(settings,async(url,opts)=>{
+    const path=new URL(url).pathname;calls.push({path,method:opts.method});
+    if(path.endsWith('/commands')) return json({
+      session_id:'proc_session',process_id:'proc_command',
+      attach:{events_url:'/v1/sessions/proc_session/events',token:'attachment-token'},
+    });
+    if(path.endsWith('/events'))return incomplete();
+    if(path.endsWith('/proc_command'))return json({process_id:'proc_someone_else',state:'exited'});
+    if(path.endsWith(':kill'))return json({ok:true});
+    throw Error('unexpected request '+path);
+  });
+  await assert.rejects(client.exec('sbx_test','sh',['-c','true']),/termination unconfirmed/);
+  assert.equal(calls.filter(c=>c.path.endsWith(':kill')).length,1);
+});
+
+test('a rejected streaming attachment attempts termination and never retries the command',async()=>{
+  const {client,calls}=fixture({response:()=>new Response('',{status:401})});
+  await assert.rejects(client.exec('sbx_test','sh',['-c','true']),/termination verified after one kill/);
+  assert.equal(calls.filter(c=>c.path.endsWith('/commands')).length,1);
+  assert.equal(calls.filter(c=>c.path.endsWith(':kill')).length,1);
+});
