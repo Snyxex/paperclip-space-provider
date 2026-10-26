@@ -21,6 +21,7 @@ SPACE control plane, or prove compatibility with a Paperclip host.
 - Deploy SPACE, verify health, version, advertised API, and Firecracker/KVM support.
 - Install local packed plugin into a matching Paperclip host and register the driver.
 - Create VM, inspect readiness, run stdout/stderr commands, verify exit codes.
+- Force a failed create operation after SPACE returns a sandbox ID; confirm best-effort deletion, error reporting, no duplicate create and manual recovery path if deletion is rejected.
 - Test nonzero exits, streaming interruptions, timeout, cancellation, process
   recovery and unknown outcomes; ensure orphan resources are reconciled.
 - Exercise binary and nested workspace sync, excludes, permission boundaries,
