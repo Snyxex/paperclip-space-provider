@@ -10,7 +10,7 @@ export function assertPackageLayout({pkg,lock,manifest,packedFiles,sourceFiles,s
   const fail=(message)=>{throw new Error('npm package gate: '+message);};
   if (!pkg || !lock || !manifest || !Array.isArray(packedFiles) || !Array.isArray(sourceFiles))
     fail('invalid metadata input');
-  if (typeof pkg.version!=='string' || !/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$/.test(pkg.version))
+  if (typeof pkg.version!=='string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(pkg.version))
     fail('invalid semver version');
   if (pkg.version!==manifest.version || pkg.version!==lock.version || pkg.version!==lock.packages?.['']?.version)
     fail('package, lockfile and plugin manifest versions differ');
@@ -19,7 +19,7 @@ export function assertPackageLayout({pkg,lock,manifest,packedFiles,sourceFiles,s
   if (pkg.license!=='Apache-2.0' || pkg.type!=='module')
     fail('license or module format is unexpected');
   if (pkg.private!==true && pkg.private!==false) fail('private must be an explicit boolean');
-  if (pkg.private===false && !/^@[a-z0-9][a-z0-9._-]*\\/paperclip-space-provider$/.test(pkg.name))
+  if (pkg.private===false && !/^@[a-z0-9][a-z0-9._-]*\/paperclip-space-provider$/.test(pkg.name))
     fail('publishable package must have an approved scoped name');
   if (pkg.main!=='./dist/index.js' || pkg.exports?.['.']!=='./dist/index.js' ||
     pkg.paperclipPlugin?.manifest!=='./dist/manifest.js' || pkg.paperclipPlugin?.worker!=='./dist/worker.js')
