@@ -62,6 +62,7 @@ NODE
 npm ci --ignore-scripts --no-audit --fund=false
 npm run build
 npm test
+npm run check:package
 npm audit --omit=dev --audit-level=high
 npm pack --dry-run --json > /tmp/npm-space-package-"$".json
 node - /tmp/npm-space-package-"$".json <<'NODE'
