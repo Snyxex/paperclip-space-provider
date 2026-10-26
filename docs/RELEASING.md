@@ -8,6 +8,12 @@ The development package identifier is **`paperclip-space-provider`** and `packag
 
 Before an independently reviewed release, an authorized maintainer must choose a scoped npm package name under an account or organization they control (for example, `@organization/paperclip-space-provider`, where `organization` is an explicitly substituted placeholder). Update `package.json`, `package-lock.json`, CI checks, and any distribution metadata as one reviewed change. There is no implicit or automatic npm scope migration.
 
+## Release engineering gate (available before publication)
+
+Run `npm ci --ignore-scripts --no-audit --fund=false`, `npm run build`, `npm test`, `npm run check:public`, and `npm run check:package` from a clean checkout. The package gate uses `npm pack --dry-run --json` to check the **actual npm payload**, ensures all compiled JavaScript matches reviewed source files, rejects unexpected payload paths, verifies manifest, package, and lockfile versions, and requires a pinned Paperclip SDK. This must pass in the Jenkins PR pipeline and the trusted release job.
+
+The `private` flag intentionally remains `true` and the release target name remains unset until the distribution owner chooses and verifies a scope. `check:package` passing means that the tarball is internally consistent, **not** that the alpha is production-safe, secure, or published.
+
 ## Branch and publication policy
 
 Only the **current origin/main HEAD** may become a release.
@@ -42,7 +48,7 @@ Stage-only tokens can retain sensitive write capabilities. Keep them out of the 
 4. Inspect the staged version using `npm stage list`, `npm stage view <stage-id>` or `npm stage download <stage-id>`.
 5. Approve public release manually with the required npm 2FA only when the package has passed the release gates.
 
-Never move a published tag or bypass the `main` tip requirement. No real-VM SPACE integration, production security review, or approved release has occurred yet.
+Never move a published tag or bypass the `main` tip requirement. A disposable Paperclip-initiated create/execute/delete probe was successful against the local SPACE deployment, but end-to-end agent execution, process cancellation, production-grade workspace sync, and recovery under partial failures remain unqualified. No production security review or approved release has occurred.
 
 ## References
 

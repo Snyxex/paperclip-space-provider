@@ -114,3 +114,52 @@ test('workspace bootstrap is confined to a fixed guest path and standard seed us
  assert.match(observed,/\[ ! -w '\/paperclip-workspace' \]/);
  assert.doesNotMatch(observed,/chmod 777|chown -R/);
 });
+
+test('failed create operation cleans up the known VM without creating another',async()=>{
+ const calls=[];
+ const client=new SpaceClient(settings,async(url,opts)=>{
+   const path=new URL(url).pathname;
+   calls.push({path,method:opts.method});
+   if(path==='/v1/sandboxes' && opts.method==='POST')
+     return json({sandbox_id:'sbx_failed',operation_id:'op_failed'});
+   if(path==='/v1/operations/op_failed') return json({state:'failed'});
+   if(path==='/v1/sandboxes/sbx_failed' && opts.method==='DELETE')
+     return json({operation_id:'op_deleted'});
+   if(path==='/v1/operations/op_deleted') return json({state:'succeeded'});
+   throw Error('unexpected request '+path);
+ });
+ await assert.rejects(client.create(),/Sandbox sbx_failed readiness failed; deletion confirmed.*SPACE state failed/);
+ assert.equal(calls.filter(x=>x.path==='/v1/sandboxes' && x.method==='POST').length,1);
+ assert.equal(calls.filter(x=>x.method==='DELETE').length,1);
+});
+
+test('a failed cleanup is reported as unconfirmed and preserves sandbox ID',async()=>{
+ const calls=[];
+ const client=new SpaceClient(settings,async(url,opts)=>{
+   const path=new URL(url).pathname;calls.push({path,method:opts.method});
+   if(path==='/v1/sandboxes' && opts.method==='POST')
+     return json({sandbox_id:'sbx_orphan',operation_id:'op_create'});
+   if(path==='/v1/operations/op_create') return json({state:'failed'});
+   if(path==='/v1/sandboxes/sbx_orphan' && opts.method==='DELETE')
+     return new Response(JSON.stringify({error:'cannot delete'}),{status:409,headers:{'content-type':'application/json'}});
+   throw Error('unexpected request '+path);
+ });
+ await assert.rejects(client.create(),/Sandbox sbx_orphan readiness failed; cleanup unconfirmed/);
+ assert.equal(calls.filter(x=>x.method==='DELETE').length,1);
+ assert.equal(calls.filter(x=>x.method==='POST').length,1);
+});
+
+test('malformed operation ID after sandbox creation also triggers owned cleanup',async()=>{
+ const calls=[];
+ const client=new SpaceClient(settings,async(url,opts)=>{
+   const path=new URL(url).pathname;calls.push({path,method:opts.method});
+   if(path==='/v1/sandboxes' && opts.method==='POST')
+     return json({sandbox_id:'sbx_missing_operation',operation_id:'malformed'});
+   if(path==='/v1/sandboxes/sbx_missing_operation' && opts.method==='DELETE')
+     return json({operation_id:'op_deleted'});
+   if(path==='/v1/operations/op_deleted')return json({state:'succeeded'});
+   throw Error('unexpected request '+path);
+ });
+ await assert.rejects(client.create(),/Sandbox sbx_missing_operation readiness failed; deletion confirmed/);
+ assert.equal(calls.filter(x=>x.method==='DELETE').length,1);
+});

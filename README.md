@@ -15,6 +15,7 @@ Community-maintained integration between [Paperclip AI](https://github.com/paper
 - Optional Paperclip-driven synthetic Node test: native guest upload, exact read-back, node --test execution, and VM deletion
 - SSE stdout/stderr decoding with separate short-lived stream token
 - No blind replay of mutations if the outcome is unknown
+- Best-effort cleanup of newly created sandboxes after readiness failure; failures retain the sandbox ID for operator reconciliation
 - Configurable API/data-plane endpoints, no server-specific URLs
 
 **Not yet supported for production:** fully verified workspace transfer, stdin, complete process cleanup after interrupted streams, guaranteed lease expiration, reusable/suspendable sandboxes, prepared Codex/Claude agent images, full Paperclip host integration.
@@ -70,6 +71,7 @@ The repository includes a credential-free public-source hygiene check (`npm run 
 npm run check:public
 npm run build
 npm test
+npm run check:package
 npm pack --dry-run
 ```
 
@@ -91,6 +93,8 @@ See [Release instructions](docs/RELEASING.md), [Security policy](SECURITY.md), a
 - [x] Fail-closed, opt-in experimental single-file sync and path/symlink tests
 - [x] Bounded native SPACE file/directory sync, behind explicit preproduction opt-in
 - [ ] Full production qualification: adversarial filesystem/TOCTOU review, real SPACE Firecracker VM and Paperclip host integration, cancellation and failure recovery
+- [x] Failed sandbox readiness triggers a bounded, explicit cleanup attempt with regression tests
+- [x] npm tarball integrity gate checks source parity, lockfile/manifest versions, entrypoints, and an exact file allowlist
 - [ ] Stdin transfer, process cancellation, cleanup/reconciliation after unknown outcomes
 - [ ] Lease ownership, resource isolation, cleanup and recovery
 - [x] Opt-in runtime prerequisite checks and synthetic Node-file test implementation (host/VM qualification pending)
