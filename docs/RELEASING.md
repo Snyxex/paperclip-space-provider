@@ -48,7 +48,7 @@ Stage-only tokens can retain sensitive write capabilities. Keep them out of the 
 4. Inspect the staged version using `npm stage list`, `npm stage view <stage-id>` or `npm stage download <stage-id>`.
 5. Approve public release manually with the required npm 2FA only when the package has passed the release gates.
 
-Never move a published tag or bypass the `main` tip requirement. A disposable Paperclip-initiated create/execute/delete probe was successful against the local SPACE deployment, but end-to-end agent execution, process cancellation, production-grade workspace sync, and recovery under partial failures remain unqualified. No production security review or approved release has occurred.
+Never move a published tag or bypass the `main` tip requirement. A disposable Paperclip-initiated create/execute/delete probe was successful against the local SPACE deployment, but end-to-end agent execution, operator-initiated process cancellation, production-grade workspace sync, and recovery under partial failures remain unqualified. Bounded best-effort kill after a broken command stream is implemented but requires adversarial live validation, and a failed control-plane request can still leave termination unconfirmed. No production security review or approved release has occurred.
 
 ## References
 
