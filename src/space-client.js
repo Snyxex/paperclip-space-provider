@@ -124,6 +124,48 @@ export class SpaceClient {
     const opId = identifier(result.operation_id, 'op_');
     await this.wait(`/v1/operations/${opId}`, 'succeeded');
   }
+  // A stream disconnect does not mean the guest process exited. Reconcile by
+  // process ID (never a guessed session ID), issue at most one kill, and then
+  // verify termination separately. This budget is independent of command timeouts.
+  async reconcileUncertainProcess(sandboxId, processId) {
+    sandboxId = identifier(sandboxId, 'sbx_');
+    processId = identifier(processId, 'proc_');
+    const resource = `/v1/sandboxes/${sandboxId}/processes/${processId}`;
+    const inspect = async () => {
+      const status = await this.api(resource, {timeoutMs: 4_000});
+      if (status.process_id !== processId) throw new SpaceError('SPACE process inspection identity mismatch');
+      return status.state === 'exited';
+    };
+
+    // A delayed or truncated stream may have hidden a perfectly normal exit.
+    // We cannot recover a complete transcript and must not report success.
+    try {
+      if (await inspect()) return 'exited';
+    } catch {
+      // A transient inspection error or 404 is not proof of termination.
+    }
+
+    try {
+      const result = await this.api(resource + ':kill', {
+        method: 'POST', timeoutMs: 5_000,
+      });
+      if (result.ok !== true) return 'unconfirmed';
+    } catch {
+      // Kill is not idempotent. Never blindly replay on an unknown response.
+      return 'unconfirmed';
+    }
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (await inspect()) return 'killed';
+      } catch {
+        // Not found can also mean no attachment or expired process history.
+      }
+      if (attempt < 2) await sleep(250);
+    }
+    return 'unconfirmed';
+  }
+
   async exec(id, command, args = [], options = {}, log = () => {}) {
     id = identifier(id, 'sbx_');
     if (typeof command !== 'string' || !command || !Array.isArray(args) || args.some(x=>typeof x !== 'string')) throw new Error('Invalid command');
@@ -144,20 +186,37 @@ export class SpaceClient {
     const payload = {command: ['sh', '-c', script], timeout: `${Math.ceil(timeoutMs/1000)}s`, ...(cwd ? {cwd} : {})};
     // Never retry command creation blindly; it may already be executing.
     const result = await this.api(`/v1/sandboxes/${id}/commands`, {method: 'POST', body: payload, key: randomUUID()});
-    const sessionId = identifier(result.session_id, 'proc_');
-    const eventsPath = `/v1/sessions/${sessionId}/events`;
-    const fullUrl = this.config.dataPlaneUrl + eventsPath;
-    if (result.attach?.events_url !== eventsPath && result.attach?.events_url !== fullUrl) throw new SpaceError('SPACE returned an unexpected command stream destination');
-    if (typeof result.attach.token !== 'string' || !result.attach.token) throw new SpaceError('SPACE command attach token is missing');
-    let response;
+    // SPACE currently often returns equal session/process IDs, but these
+    // identities are distinct API fields. Never infer one from the other.
+    let processId;
     try {
-      response = await this.fetchImpl(fullUrl, {
+      processId = identifier(result.process_id, 'proc_');
+    } catch {
+      throw new SpaceError(`SPACE accepted command in sandbox ${id} without a valid process ID; cancellation cannot be verified. Inspect and reconcile the sandbox.`);
+    }
+    try {
+      const sessionId = identifier(result.session_id, 'proc_');
+      const eventsPath = `/v1/sessions/${sessionId}/events`;
+      const fullUrl = this.config.dataPlaneUrl + eventsPath;
+      if (result.attach?.events_url !== eventsPath && result.attach?.events_url !== fullUrl) throw new SpaceError('SPACE returned an unexpected command stream destination');
+      if (typeof result.attach.token !== 'string' || !result.attach.token) throw new SpaceError('SPACE command attach token is missing');
+      const response = await this.fetchImpl(fullUrl, {
         method:'GET', redirect:'error',
         headers: {'Authorization': `Bearer ${result.attach.token}`, 'Accept': 'text/event-stream'},
         signal: AbortSignal.timeout(timeoutMs + 15_000),
       });
-    } catch {throw new SpaceError('SPACE command stream failed; do not rerun the command automatically');}
-    return readCommandEvents(response, log);
+      return await readCommandEvents(response, log);
+    } catch (error) {
+      // A complete process_exited event is the only normal success path.
+      // Even if the process is now stopped, an incomplete transcript cannot
+      // be reported as successful. Do not replay commands with side effects.
+      const state = await this.reconcileUncertainProcess(id, processId);
+      const reason = error instanceof Error ? error.message.slice(0, 180) : 'stream failure';
+      const disposition = state === 'killed' ? 'termination verified after one kill'
+        : state === 'exited' ? 'process already exited'
+        : 'termination unconfirmed; inspect SPACE before retrying';
+      throw new SpaceError(`SPACE command ${processId} in sandbox ${id}: output or outcome uncertain; ${disposition}. Cause: ${reason}`);
+    }
   }
   async ensureWorkspace(id) {
     // The published SPACE seed guest runs as 'user' (UID 2000) and cannot

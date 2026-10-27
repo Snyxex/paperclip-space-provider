@@ -24,6 +24,7 @@ SPACE control plane, or prove compatibility with a Paperclip host.
 - Force a failed create operation after SPACE returns a sandbox ID; confirm best-effort deletion, error reporting, no duplicate create and manual recovery path if deletion is rejected.
 - Test nonzero exits, streaming interruptions, timeout, cancellation, process
   recovery and unknown outcomes; ensure orphan resources are reconciled.
+- On a lost command stream with a known process ID, assert only one kill request is sent, a subsequent process GET verifies `exited`, and the partial command is never rerun or marked successful. Also test kill HTTP failure, 404/evicted process histories, mismatched IDs, and cleanup timeouts. Do not expose management tokens or command output in failure diagnostics.
 - Exercise binary and nested workspace sync, excludes, permission boundaries,
   symlinks/hardlinks, race scenarios, size caps, and interrupted transfers.
 - Confirm sandbox cannot read SPACE management tokens or host credentials.

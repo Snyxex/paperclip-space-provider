@@ -41,7 +41,7 @@ test('SPACE mutations, scoped stream attachment and cleanup',async()=>{
    if(path==='/v1/operations/'+create||path==='/v1/operations/'+del)return json({state:'succeeded'});
    if(path==='/v1/sandboxes/'+sandbox&&opts.method==='GET')return json({state:'running'});
    if(path==='/v1/sandboxes/'+sandbox+'/processes')return json({data:[]});
-   if(path==='/v1/sandboxes/'+sandbox+'/commands')return json({session_id:session,attach:{token:'stream-token',events_url:'/v1/sessions/'+session+'/events'}});
+   if(path==='/v1/sandboxes/'+sandbox+'/commands')return json({session_id:session,process_id:session,attach:{token:'stream-token',events_url:'/v1/sessions/'+session+'/events'}});
    if(path==='/v1/sessions/'+session+'/events')return sse(['data: {"type":"stdout","data_base64":"aGk="}\n\n','data: {"type":"process_exited","exit_code":0}\n\n']);
    if(path==='/v1/sandboxes/'+sandbox&&opts.method==='DELETE')return json({operation_id:del});
    throw new Error('Unexpected test request '+path);
@@ -67,7 +67,7 @@ test('guest execution does not require an external env binary',async()=>{
    const pathname=new URL(url).pathname;
    if(pathname.endsWith('/commands')) {
      requests.push(JSON.parse(opts.body));
-     return json({session_id:'proc_test',attach:{events_url:'/v1/sessions/proc_test/events',token:'stream-token'}});
+     return json({session_id:'proc_test',process_id:'proc_test',attach:{events_url:'/v1/sessions/proc_test/events',token:'stream-token'}});
    }
    if(pathname.endsWith('/events')) return sse(['data: {"type":"process_exited","exit_code":0}\n\n']);
    throw new Error('Unexpected request: '+pathname);

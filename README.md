@@ -2,7 +2,7 @@
 
 Community-maintained integration between [Paperclip AI](https://github.com/paperclipai/paperclip) and [Perplexity SPACE](https://github.com/perplexityai/SPACE), using isolated Firecracker microVM sandboxes.
 
-**Status: experimental alpha — not ready for production or real source repositories.** This source release is not yet published on npm. The production workspace synchronization, process cancellation, stdin and persistent session features remain incomplete.
+**Status: experimental alpha — not ready for production or real source repositories.** This source release is not yet published on npm. The production workspace synchronization, operator-initiated cancellation, stdin and persistent session features remain incomplete.
 
 > Independent project; not officially affiliated with Paperclip AI or Perplexity.
 
@@ -14,11 +14,12 @@ Community-maintained integration between [Paperclip AI](https://github.com/paper
 - Opt-in Node tooling / Codex CLI presence checks on newly acquired Firecracker VMs (no agent-auth verification)
 - Optional Paperclip-driven synthetic Node test: native guest upload, exact read-back, node --test execution, and VM deletion
 - SSE stdout/stderr decoding with separate short-lived stream token
+- Bounded process-state reconciliation on lost command streams; at most one targeted kill followed by exit verification, never a blind command replay
 - No blind replay of mutations if the outcome is unknown
 - Best-effort cleanup of newly created sandboxes after readiness failure; failures retain the sandbox ID for operator reconciliation
 - Configurable API/data-plane endpoints, no server-specific URLs
 
-**Not yet supported for production:** fully verified workspace transfer, stdin, complete process cleanup after interrupted streams, guaranteed lease expiration, reusable/suspendable sandboxes, prepared Codex/Claude agent images, full Paperclip host integration.
+**Not yet supported for production:** fully verified workspace transfer, stdin, full operator-initiated cancellation and reconciliation after unknown command creation, guaranteed lease expiration, reusable/suspendable sandboxes, prepared Codex/Claude agent images, full Paperclip host integration.
 
 ### Experimental workspace file transfer (OFF by default)
 
@@ -95,7 +96,8 @@ See [Release instructions](docs/RELEASING.md), [Security policy](SECURITY.md), a
 - [ ] Full production qualification: adversarial filesystem/TOCTOU review, real SPACE Firecracker VM and Paperclip host integration, cancellation and failure recovery
 - [x] Failed sandbox readiness triggers a bounded, explicit cleanup attempt with regression tests
 - [x] npm tarball integrity gate checks source parity, lockfile/manifest versions, entrypoints, and an exact file allowlist
-- [ ] Stdin transfer, process cancellation, cleanup/reconciliation after unknown outcomes
+- [x] Bounded best-effort process termination after failed command streams (known process ID; not guaranteed under network faults)
+- [ ] Stdin transfer, operator-initiated cancellation, process recovery after unknown command creation and lease reconciliation after crashes
 - [ ] Lease ownership, resource isolation, cleanup and recovery
 - [x] Opt-in runtime prerequisite checks and synthetic Node-file test implementation (host/VM qualification pending)
 - [ ] Codex-capable Firecracker template
